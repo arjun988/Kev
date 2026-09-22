@@ -9,17 +9,22 @@ Kev speaks the same decision contract as TypeSafe’s Jev (`choice` / `score` / 
 
 ---
 
-## What you get (Phase 0 + 1)
+## What you get (Phase 0–3)
 
 | Piece | Package | Role |
 | --- | --- | --- |
-| Decision API | `@kev-ai/server` | `POST /v1/systemone` |
-| Schemas | `@kev-ai/schema` | Zod types + OpenAPI |
-| Engine | `@kev-ai/core` | Logprob readout, constrained JSON, parallel micro-score |
-| Backends | `@kev-ai/backends` | `mock`, `ollama`, `openai` (compatible) |
-| TS SDK | `@kev-ai/sdk` | Typed client |
-| CLI | `@kev-ai/cli` | `kev health` / `kev demo` / `kev ask` |
+| Decision API | `@kev-ai/server` | `POST /v1/systemone` + **batch**, cache, rate limits, audit |
+| Playground | `apps/playground` | Brand-first UI at `/playground/` |
+| MCP | `@kev-ai/mcp` | Agent IDE tool (`kev_systemone`) |
+| Schemas | `@kev-ai/schema` | Zod types + OpenAPI (incl. images / batch) |
+| Engine | `@kev-ai/core` | Readout, cache, **cascade**, stability helpers |
+| Backends | `@kev-ai/backends` | `mock`, `ollama`, `openai` |
+| TS SDK | `@kev-ai/sdk` | Typed client + batch |
+| CLI | `@kev-ai/cli` | `kev ask` / `kev eval` |
+| Eval | `@kev-ai/eval` | Dataset + option-order stability harness |
+| Adapters | `@kev-ai/adapters` | LangChain + LlamaIndex wrappers |
 | Python SDK | `kev` | `pip install -e ./python` |
+| Model cards | `models/cards/` | Ollama / GGUF / MLX / vLLM FP8 notes |
 
 ---
 
@@ -72,6 +77,10 @@ pnpm --filter @kev-ai/server dev
 ```
 
 Server listens on `http://127.0.0.1:3000`.
+
+- Health: `GET /health`
+- Playground: [http://127.0.0.1:3000/playground/](http://127.0.0.1:3000/playground/)
+- OpenAPI: `GET /openapi.json`
 
 Check health:
 
@@ -322,12 +331,82 @@ See [`.env.example`](.env.example).
 
 ---
 
+## Batch, cache, auth, audit
+
+```bash
+curl -s http://127.0.0.1:3000/v1/systemone/batch \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "items": [
+      {
+        "id": "a",
+        "state": "Charged twice",
+        "questions": {
+          "topic": {
+            "type": "choice",
+            "instructions": "Topic?",
+            "criteria": { "billing": "money", "bug": "broken" }
+          }
+        }
+      }
+    ]
+  }'
+```
+
+| Env | Default | Meaning |
+| --- | --- | --- |
+| `KEV_API_KEY` | empty | Require `Authorization: Bearer …` |
+| `KEV_RATE_LIMIT` | `120` | Max requests / window / client (`0` disables) |
+| `KEV_CACHE_SIZE` | `256` | LRU response cache (`0` disables) |
+| `KEV_AUDIT` | `1` | JSON audit lines in logs |
+| `KEV_OTEL` | `0` | Span-style JSON hooks |
+
+Identical requests reuse the cache unless you pass `"no_cache": true`.
+
+## Eval & stability
+
+```bash
+pnpm --filter @kev-ai/cli exec kev eval dataset
+pnpm --filter @kev-ai/cli exec kev eval stability --trials 20
+# or
+pnpm --filter @kev-ai/eval exec kev-eval dataset
+```
+
+Fixtures live in `packages/eval/fixtures/`. Dataset schema: `models/datasets/`.
+
+## MCP
+
+```bash
+pnpm --filter @kev-ai/mcp build
+# point Cursor / Claude at: node apps/mcp/dist/index.js
+# with KEV_BASE_URL=http://127.0.0.1:3000
+```
+
+## Adapters
+
+```ts
+import { createLangChainKevTool, createLlamaIndexKevTool } from "@kev-ai/adapters";
+
+const tool = createLangChainKevTool({ baseUrl: "http://127.0.0.1:3000" });
+```
+
+## Model cards
+
+See [`models/cards/README.md`](models/cards/README.md) for Ollama, GGUF, MLX, and vLLM/FP8 recipes.
+
+## Cascade (>255 options) & images
+
+- `cascadeChoice()` in `@kev-ai/core` — hierarchical choice
+- State may include `images: [{ url | b64, media_type }]` — see `examples/agent-step`
+
+---
+
 ## Compatibility notes
 
 - Request/response shapes follow the System One / Jev Decision API (`state` + `questions` → `answers` + `usage`).
 - Point Jev-oriented clients at Kev with `TYPESAFE_BASE_URL=http://127.0.0.1:3000` (and optional `TYPESAFE_API_KEY`).
 - Kev extensions: `trace: true` on the request returns per-question strategy/backend metadata.
-- **No training** in this release. Kev is inference + API only.
+- **No training** in this release. Kev is inference + API only. Dataset format under `models/datasets/` is for eval only.
 
 ---
 
@@ -339,4 +418,4 @@ Apache-2.0 — see [LICENSE](LICENSE).
 
 ## Roadmap
 
-Phase 0–1 are implemented in this tree. Next (see [`plan.md`](plan.md)): batch API, MCP server, playground UI, deeper eval harness.
+Phases 0–3 are implemented in this tree. Next (see [`plan.md`](plan.md)): hosted demo, public benchmarks, v1.0 freeze.

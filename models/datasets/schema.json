@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/arjun988/Kev/models/datasets/schema.json",
+  "title": "KevDecisionDataset",
+  "type": "object",
+  "required": ["examples"],
+  "properties": {
+    "name": { "type": "string" },
+    "description": { "type": "string" },
+    "examples": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "state", "questions"],
+        "properties": {
+          "id": { "type": "string" },
+          "state": {},
+          "questions": { "type": "object" },
+          "expected": {
+            "type": "object",
+            "properties": {
+              "choice": {
+                "type": "object",
+                "additionalProperties": { "type": "string" }
+              },
+              "noul": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "min": { "type": "number" },
+                    "max": { "type": "number" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

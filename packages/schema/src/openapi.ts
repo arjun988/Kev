@@ -6,7 +6,7 @@ export const openApiDocument = {
   openapi: "3.1.0",
   info: {
     title: "Kev Decision API",
-    version: "0.1.0",
+    version: "0.2.0",
     description:
       "Open-source System One decision engine. Send a state and typed questions; get calibrated answers with probabilities.",
     license: { name: "Apache-2.0", url: "https://www.apache.org/licenses/LICENSE-2.0" },
@@ -86,7 +86,35 @@ export const openApiDocument = {
             },
           },
           "401": { description: "Unauthorized" },
+          "429": { description: "Rate limited" },
           "502": { description: "Upstream model error" },
+        },
+      },
+    },
+    "/v1/systemone/batch": {
+      post: {
+        summary: "Evaluate many System One items concurrently",
+        operationId: "systemOneBatch",
+        security: [{ bearerAuth: [] }, {}],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/BatchRequest" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Per-item results",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/BatchResponse" },
+              },
+            },
+          },
+          "400": { description: "Invalid request" },
+          "429": { description: "Rate limited" },
         },
       },
     },
@@ -230,6 +258,59 @@ export const openApiDocument = {
           input_tokens: { type: "integer" },
           output_tokens: { type: "integer" },
           latency_ms: { type: "number" },
+          cache_hit: { type: "boolean" },
+        },
+      },
+      BatchRequest: {
+        type: "object",
+        required: ["items"],
+        properties: {
+          model: { type: "string" },
+          concurrency: { type: "integer", minimum: 1, maximum: 32 },
+          items: {
+            type: "array",
+            minItems: 1,
+            maxItems: 100,
+            items: {
+              type: "object",
+              required: ["state", "questions"],
+              properties: {
+                id: { type: "string" },
+                state: {},
+                questions: { type: "object" },
+                trace: { type: "boolean" },
+              },
+            },
+          },
+        },
+      },
+      BatchResponse: {
+        type: "object",
+        required: ["model", "results", "usage"],
+        properties: {
+          model: { type: "string" },
+          results: {
+            type: "array",
+            items: {
+              type: "object",
+              required: ["index", "ok"],
+              properties: {
+                id: { type: "string" },
+                index: { type: "integer" },
+                ok: { type: "boolean" },
+                result: { $ref: "#/components/schemas/SystemOneResponse" },
+                error: {
+                  type: "object",
+                  properties: {
+                    type: { type: "string" },
+                    message: { type: "string" },
+                    code: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+          usage: { $ref: "#/components/schemas/Usage" },
         },
       },
       ErrorBody: {

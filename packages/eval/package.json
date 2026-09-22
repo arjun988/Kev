@@ -1,0 +1,36 @@
+{
+  "name": "@kev-ai/eval",
+  "version": "0.2.0",
+  "description": "Evaluation harness and stability suites for Kev",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "kev-eval": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "fixtures"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "test": "node --import tsx --test src/stability.test.ts"
+  },
+  "dependencies": {
+    "@kev-ai/backends": "workspace:*",
+    "@kev-ai/core": "workspace:*",
+    "@kev-ai/schema": "workspace:*",
+    "@kev-ai/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,6 +1,23 @@
 import { z } from "zod";
 
-/** String, object, or array of strings — anything software can hand a decision model. */
+/** Multimodal image input for agent / screenshot decisions. */
+export const ImagePartSchema = z.object({
+  url: z.string().url().optional(),
+  /** Raw base64 without data: prefix */
+  b64: z.string().min(1).optional(),
+  media_type: z
+    .enum(["image/png", "image/jpeg", "image/webp", "image/gif"])
+    .default("image/png"),
+  detail: z.enum(["low", "high", "auto"]).optional(),
+}).refine((v) => Boolean(v.url || v.b64), {
+  message: "image part requires url or b64",
+});
+export type ImagePart = z.infer<typeof ImagePartSchema>;
+
+/**
+ * String, object, array, or multimodal payload.
+ * Multimodal shape: { text?: string, images?: ImagePart[], ...any }
+ */
 export const StateSchema = z.union([
   z.string(),
   z.record(z.unknown()),
@@ -22,10 +39,7 @@ export type ChoiceQuestion = z.infer<typeof ChoiceQuestionSchema>;
 export const ScoreQuestionSchema = z.object({
   type: z.literal("score"),
   instructions: z.string().min(1),
-  criteria: z
-    .array(z.string().min(1))
-    .min(2)
-    .max(10),
+  criteria: z.array(z.string().min(1)).min(2).max(10),
 });
 export type ScoreQuestion = z.infer<typeof ScoreQuestionSchema>;
 
@@ -58,8 +72,30 @@ export const SystemOneRequestSchema = z.object({
     }),
   /** Kev extension: include engine/backend trace in the response */
   trace: z.boolean().optional(),
+  /** Kev extension: bypass server-side response cache */
+  no_cache: z.boolean().optional(),
 });
 export type SystemOneRequest = z.infer<typeof SystemOneRequestSchema>;
+
+export const BatchRequestSchema = z.object({
+  model: z.string().min(1).optional().default("kev-latest"),
+  items: z
+    .array(
+      z.object({
+        id: z.string().min(1).optional(),
+        state: StateSchema,
+        questions: z.record(QuestionSchema).refine((q) => Object.keys(q).length >= 1, {
+          message: "at least one question is required",
+        }),
+        trace: z.boolean().optional(),
+      }),
+    )
+    .min(1)
+    .max(100),
+  /** Max concurrent item evaluations (server may lower this) */
+  concurrency: z.number().int().min(1).max(32).optional().default(8),
+});
+export type BatchRequest = z.infer<typeof BatchRequestSchema>;
 
 export const ChoiceAnswerSchema = z.object({
   type: z.literal("choice"),
@@ -95,6 +131,7 @@ export const UsageSchema = z.object({
   input_tokens: z.number().int().nonnegative(),
   output_tokens: z.number().int().nonnegative(),
   latency_ms: z.number().nonnegative().optional(),
+  cache_hit: z.boolean().optional(),
 });
 export type Usage = z.infer<typeof UsageSchema>;
 
@@ -114,6 +151,28 @@ export const SystemOneResponseSchema = z.object({
 });
 export type SystemOneResponse = z.infer<typeof SystemOneResponseSchema>;
 
+export const BatchItemResultSchema = z.object({
+  id: z.string().optional(),
+  index: z.number().int().nonnegative(),
+  ok: z.boolean(),
+  result: SystemOneResponseSchema.optional(),
+  error: z
+    .object({
+      type: z.string(),
+      message: z.string(),
+      code: z.string().optional(),
+    })
+    .optional(),
+});
+export type BatchItemResult = z.infer<typeof BatchItemResultSchema>;
+
+export const BatchResponseSchema = z.object({
+  model: z.string(),
+  results: z.array(BatchItemResultSchema),
+  usage: UsageSchema,
+});
+export type BatchResponse = z.infer<typeof BatchResponseSchema>;
+
 export const ErrorBodySchema = z.object({
   error: z.object({
     type: z.string(),
@@ -124,10 +183,37 @@ export const ErrorBodySchema = z.object({
 });
 export type ErrorBody = z.infer<typeof ErrorBodySchema>;
 
-/** Serialize state into a stable prompt string. */
+/** Extract image parts from a multimodal state object, if present. */
+export function extractImages(state: State): ImagePart[] {
+  if (!state || typeof state !== "object" || Array.isArray(state)) return [];
+  const images = (state as { images?: unknown }).images;
+  if (!Array.isArray(images)) return [];
+  const out: ImagePart[] = [];
+  for (const item of images) {
+    const parsed = ImagePartSchema.safeParse(item);
+    if (parsed.success) out.push(parsed.data);
+  }
+  return out;
+}
+
+/** Serialize state into a stable prompt string (images summarized, not inlined). */
 export function formatState(state: State): string {
   if (typeof state === "string") return state;
-  return JSON.stringify(state, null, 2);
+  if (Array.isArray(state)) return JSON.stringify(state, null, 2);
+  const images = extractImages(state);
+  if (images.length === 0) return JSON.stringify(state, null, 2);
+  const { images: _drop, ...rest } = state as Record<string, unknown>;
+  const text =
+    typeof rest.text === "string"
+      ? rest.text
+      : JSON.stringify(rest, null, 2);
+  const imageNote = images
+    .map((img, i) => {
+      const src = img.url ?? `b64:${(img.b64 ?? "").slice(0, 16)}…`;
+      return `[image ${i + 1}: ${img.media_type} ${src}]`;
+    })
+    .join("\n");
+  return `${text}\n\nAttached images:\n${imageNote}`;
 }
 
 /** Letter labels for readout: A–Z then a–z (52 options per pass). */

@@ -14,10 +14,27 @@ import {
   type InferenceBackend,
 } from "./engine.js";
 import type { CalibrationProfile } from "./calibration.js";
+import { LruCache, stableHash } from "./cache.js";
 
 export type EvaluateOptions = EngineConfig & {
   backend: InferenceBackend;
+  /** Optional shared response cache (prefix / identical request reuse) */
+  cache?: LruCache<SystemOneResponse>;
 };
+
+function requestCacheKey(
+  request: SystemOneRequest,
+  modelName: string,
+): string {
+  return stableHash(
+    JSON.stringify({
+      model: modelName,
+      state: request.state,
+      questions: request.questions,
+      trace: Boolean(request.trace),
+    }),
+  );
+}
 
 /**
  * Evaluate all questions in a System One request in parallel.
@@ -27,6 +44,22 @@ export async function evaluateSystemOne(
   options: EvaluateOptions,
 ): Promise<SystemOneResponse> {
   const started = Date.now();
+  const cacheKey = requestCacheKey(request, options.modelName);
+
+  if (!request.no_cache && options.cache) {
+    const hit = options.cache.get(cacheKey);
+    if (hit) {
+      return {
+        ...hit,
+        usage: {
+          ...hit.usage,
+          latency_ms: Date.now() - started,
+          cache_hit: true,
+        },
+      };
+    }
+  }
+
   const engine = new DecisionEngine(options.backend, {
     modelName: options.modelName,
     calibration: options.calibration,
@@ -53,7 +86,6 @@ export async function evaluateSystemOne(
     outputTokens += result.usage.outputTokens;
   }
 
-  // Rough token estimate if backend reported zeros (e.g. some local servers)
   if (inputTokens === 0) {
     const stateLen = formatState(request.state).length;
     inputTokens = Math.ceil(stateLen / 4) * entries.length;
@@ -66,6 +98,7 @@ export async function evaluateSystemOne(
       input_tokens: inputTokens,
       output_tokens: outputTokens,
       latency_ms: Date.now() - started,
+      cache_hit: false,
     },
   };
 
@@ -73,7 +106,17 @@ export async function evaluateSystemOne(
     response.trace = trace;
   }
 
+  if (!request.no_cache && options.cache) {
+    options.cache.set(cacheKey, response);
+  }
+
   return response;
 }
 
-export type { DecisionStrategy, InferenceBackend, State, Question, CalibrationProfile };
+export type {
+  DecisionStrategy,
+  InferenceBackend,
+  State,
+  Question,
+  CalibrationProfile,
+};

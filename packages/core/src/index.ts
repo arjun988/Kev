@@ -35,3 +35,17 @@ export {
   scoreOptions,
   type PromptOption,
 } from "./prompts.js";
+
+export { LruCache, stableHash } from "./cache.js";
+
+export {
+  cascadeChoice,
+  type CascadeOptions,
+  type CascadeResult,
+} from "./cascade.js";
+
+export {
+  measureOptionOrderStability,
+  type StabilityReport,
+  type StabilityTrial,
+} from "./stability.js";

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kev — Decision Playground</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="atmosphere" aria-hidden="true"></div>
+    <header class="hero">
+      <p class="brand">Kev</p>
+      <h1 class="headline">Ask for a decision, not a paragraph.</h1>
+      <p class="lede">
+        Typed System One answers — choice, score, or noul — with calibrated
+        probabilities you can threshold in code.
+      </p>
+      <div class="cta-row">
+        <a class="btn primary" href="#workbench">Open workbench</a>
+        <a class="btn ghost" href="/openapi.json" target="_blank" rel="noreferrer"
+          >API shape</a
+        >
+      </div>
+    </header>
+
+    <main id="workbench" class="workbench">
+      <h2>Workbench</h2>
+      <p class="support">
+        Runs against this server’s <code>POST /v1/systemone</code>. Mock backend
+        works offline.
+      </p>
+
+      <form id="form" class="form">
+        <label>
+          State
+          <textarea id="state" rows="5" required>
+Customer: I was charged twice for my order and nobody has replied. I am furious.</textarea
+          >
+        </label>
+
+        <div class="row">
+          <label>
+            Choice instructions
+            <input id="choiceInstr" value="Which team should handle this?" />
+          </label>
+          <label>
+            Choice criteria (JSON object)
+            <textarea id="choiceCriteria" rows="4">
+{
+  "billing": "charges, refunds, payments",
+  "shipping": "delivery and tracking",
+  "technical": "bugs and outages"
+}</textarea
+            >
+          </label>
+        </div>
+
+        <div class="row">
+          <label>
+            Noul instructions
+            <input id="noulInstr" value="Escalate to a human agent now?" />
+          </label>
+          <label class="check">
+            <input type="checkbox" id="trace" checked />
+            Include trace
+          </label>
+        </div>
+
+        <button type="submit" class="btn primary">Evaluate</button>
+      </form>
+
+      <pre id="out" class="out" aria-live="polite">Results appear here.</pre>
+    </main>
+
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>

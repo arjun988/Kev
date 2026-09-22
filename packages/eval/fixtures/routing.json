@@ -1,0 +1,63 @@
+{
+  "name": "routing-smoke",
+  "description": "Small routing / urgency fixture for kev eval",
+  "examples": [
+    {
+      "id": "billing-1",
+      "state": "I was charged twice on my credit card invoice",
+      "questions": {
+        "topic": {
+          "type": "choice",
+          "instructions": "Topic?",
+          "criteria": {
+            "billing": "charges and payments",
+            "bug": "product broken",
+            "account": "login"
+          }
+        }
+      },
+      "expected": { "choice": { "topic": "billing" } }
+    },
+    {
+      "id": "tech-1",
+      "state": "The app crashes with a 500 error after deploy",
+      "questions": {
+        "topic": {
+          "type": "choice",
+          "instructions": "Topic?",
+          "criteria": {
+            "billing": "charges and payments",
+            "technical": "bugs and outages",
+            "shipping": "delivery"
+          }
+        }
+      },
+      "expected": { "choice": { "topic": "technical" } }
+    },
+    {
+      "id": "urgent-1",
+      "state": "This is urgent ASAP, customers are furious",
+      "questions": {
+        "escalate": {
+          "type": "noul",
+          "instructions": "Escalate to a human now?"
+        }
+      },
+      "expected": { "noul": { "escalate": { "min": 0.6 } } }
+    },
+    {
+      "id": "nli-entail",
+      "state": {
+        "premise": "The refund was issued yesterday.",
+        "hypothesis": "The customer received their money back recently."
+      },
+      "questions": {
+        "entails": {
+          "type": "noul",
+          "instructions": "Does the premise entail the hypothesis?"
+        }
+      },
+      "expected": { "noul": { "entails": { "min": 0.2 } } }
+    }
+  ]
+}

@@ -20,6 +20,23 @@ export const ServerEnvSchema = z.object({
     .enum(["auto", "readout", "constrained", "parallel", "mock"])
     .default("auto"),
   KEV_API_KEY: z.string().optional().default(""),
+  /** Max requests per window per client (0 = disabled) */
+  KEV_RATE_LIMIT: z.coerce.number().int().nonnegative().default(120),
+  KEV_RATE_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  /** Response cache size (0 = disabled) */
+  KEV_CACHE_SIZE: z.coerce.number().int().nonnegative().default(256),
+  /** Emit audit JSONL lines */
+  KEV_AUDIT: z
+    .enum(["0", "1", "true", "false"])
+    .default("1")
+    .transform((v) => v === "1" || v === "true"),
+  /** Emit OpenTelemetry-style span JSON */
+  KEV_OTEL: z
+    .enum(["0", "1", "true", "false"])
+    .default("0")
+    .transform((v) => v === "1" || v === "true"),
+  /** Directory with playground static files (optional) */
+  KEV_PLAYGROUND_DIR: z.string().optional().default(""),
 });
 
 export type ServerEnv = z.infer<typeof ServerEnvSchema>;

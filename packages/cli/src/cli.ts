@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import { Choice, KevClient, KevError, Noul, Score } from "@kev-ai/sdk";
+import { runDataset, runStabilitySuite } from "@kev-ai/eval";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 type Args = {
   _: string[];
@@ -10,6 +12,9 @@ type Args = {
   model?: string;
   state?: string;
   file?: string;
+  dataset?: string;
+  mode?: string;
+  trials?: number;
   trace?: boolean;
   help?: boolean;
 };
@@ -25,6 +30,9 @@ function parseArgs(argv: string[]): Args {
     else if (a === "--model" || a === "-m") out.model = argv[++i];
     else if (a === "--state" || a === "-s") out.state = argv[++i];
     else if (a === "--file" || a === "-f") out.file = argv[++i];
+    else if (a === "--dataset" || a === "-d") out.dataset = argv[++i];
+    else if (a === "--mode") out.mode = argv[++i];
+    else if (a === "--trials") out.trials = Number(argv[++i]);
     else out._.push(a);
   }
   return out;
@@ -38,17 +46,13 @@ Usage:
   kev ask --state "..." [--trace]
   kev ask --file request.json
   kev demo
+  kev eval dataset [--dataset path] [--mode mock|api]
+  kev eval stability [--trials N]
 
 Environment:
   KEV_BASE_URL       Server URL (default http://127.0.0.1:3000)
   KEV_API_KEY        Optional bearer token
   KEV_MODEL          Default model id
-
-Examples:
-  kev health
-  kev demo
-  kev ask --state "Charged twice, furious" --trace
-  kev ask --file examples/ticket-routing/request.json
 `);
 }
 
@@ -57,8 +61,7 @@ async function cmdHealth(args: Args): Promise<void> {
     baseUrl: args.baseUrl,
     apiKey: args.apiKey,
   });
-  const health = await client.health();
-  console.log(JSON.stringify(health, null, 2));
+  console.log(JSON.stringify(await client.health(), null, 2));
 }
 
 async function cmdDemo(args: Args): Promise<void> {
@@ -114,15 +117,14 @@ async function cmdAsk(args: Args): Promise<void> {
     return;
   }
 
-  const state = args.state;
-  if (!state) {
+  if (!args.state) {
     console.error("Provide --state or --file");
     process.exitCode = 1;
     return;
   }
 
   const res = await client.systemOne({
-    state,
+    state: args.state,
     questions: {
       topic: Choice("What is this about?", {
         billing: "money / charges",
@@ -134,6 +136,31 @@ async function cmdAsk(args: Args): Promise<void> {
     trace: args.trace,
   });
   console.log(JSON.stringify(res, null, 2));
+}
+
+async function cmdEval(args: Args): Promise<void> {
+  const sub = args._[1];
+  if (sub === "stability") {
+    const report = await runStabilitySuite(args.trials ?? 20);
+    console.log(JSON.stringify(report, null, 2));
+    if (report.mockHeuristic.flipRate > 0.05) process.exitCode = 1;
+    return;
+  }
+  if (sub === "dataset" || !sub) {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const fallback = resolve(here, "../../eval/fixtures/routing.json");
+    const report = await runDataset({
+      path: args.dataset ?? fallback,
+      mode: args.mode === "api" ? "api" : "mock",
+      baseUrl: args.baseUrl,
+      apiKey: args.apiKey,
+    });
+    console.log(JSON.stringify(report, null, 2));
+    if (report.accuracy < 1) process.exitCode = 1;
+    return;
+  }
+  console.error(`Unknown eval subcommand: ${sub}`);
+  process.exitCode = 1;
 }
 
 async function main(): Promise<void> {
@@ -155,6 +182,9 @@ async function main(): Promise<void> {
         break;
       case "ask":
         await cmdAsk(args);
+        break;
+      case "eval":
+        await cmdEval(args);
         break;
       default:
         console.error(`Unknown command: ${cmd}`);

@@ -1,6 +1,11 @@
+import { clearTimeout, setTimeout } from "node:timers";
 import {
+  BatchRequestSchema,
+  BatchResponseSchema,
   SystemOneRequestSchema,
   SystemOneResponseSchema,
+  type BatchRequest,
+  type BatchResponse,
   type ChoiceQuestion,
   type NoulQuestion,
   type ScoreQuestion,
@@ -9,16 +14,33 @@ import {
   type SystemOneResponse,
 } from "@kev-ai/schema";
 
+type FetchFn = (
+  url: string,
+  init?: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+    signal?: AbortSignal;
+  },
+) => Promise<{
+  ok: boolean;
+  status: number;
+  text(): Promise<string>;
+}>;
+
+function resolveFetch(fetchImpl?: FetchFn): FetchFn {
+  if (fetchImpl) return fetchImpl;
+  const g = globalThis as typeof globalThis & { fetch?: FetchFn };
+  if (typeof g.fetch === "function") return g.fetch.bind(g);
+  throw new Error("global fetch is not available; pass fetchImpl");
+}
+
 export type KevClientOptions = {
-  /** Base URL of the Kev server, e.g. http://localhost:3000 */
   baseUrl?: string;
-  /** Bearer token if the server has KEV_API_KEY set */
   apiKey?: string;
-  /** Default model id */
   model?: string;
-  /** Request timeout in ms */
   timeoutMs?: number;
-  fetchImpl?: typeof fetch;
+  fetchImpl?: FetchFn;
 };
 
 export class KevError extends Error {
@@ -37,7 +59,7 @@ export class KevClient {
   private readonly apiKey?: string;
   private readonly model: string;
   private readonly timeoutMs: number;
-  private readonly fetchImpl: typeof fetch;
+  private readonly fetchImpl: FetchFn;
 
   constructor(options: KevClientOptions = {}) {
     this.baseUrl = (
@@ -52,7 +74,7 @@ export class KevClient {
       process.env.TYPESAFE_API_KEY;
     this.model = options.model ?? process.env.KEV_MODEL ?? "kev-latest";
     this.timeoutMs = options.timeoutMs ?? 120_000;
-    this.fetchImpl = options.fetchImpl ?? fetch;
+    this.fetchImpl = resolveFetch(options.fetchImpl);
   }
 
   async health(): Promise<{
@@ -78,10 +100,22 @@ export class KevClient {
       state: input.state,
       questions: input.questions,
       trace: input.trace,
+      no_cache: input.no_cache,
     });
-
     const raw = await this.request("POST", "/v1/systemone", payload);
     return SystemOneResponseSchema.parse(raw);
+  }
+
+  async batch(
+    input: Omit<BatchRequest, "model"> & { model?: string },
+  ): Promise<BatchResponse> {
+    const payload = BatchRequestSchema.parse({
+      model: input.model ?? this.model,
+      items: input.items,
+      concurrency: input.concurrency,
+    });
+    const raw = await this.request("POST", "/v1/systemone/batch", payload);
+    return BatchResponseSchema.parse(raw);
   }
 
   private async request(
@@ -92,12 +126,8 @@ export class KevClient {
     const headers: Record<string, string> = {
       Accept: "application/json",
     };
-    if (body !== undefined) {
-      headers["Content-Type"] = "application/json";
-    }
-    if (this.apiKey) {
-      headers.Authorization = `Bearer ${this.apiKey}`;
-    }
+    if (body !== undefined) headers["Content-Type"] = "application/json";
+    if (this.apiKey) headers.Authorization = `Bearer ${this.apiKey}`;
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
@@ -143,7 +173,6 @@ export class KevClient {
   }
 }
 
-/** Helpers mirroring the System One primitives for typed construction. */
 export function Choice(
   instructions: string,
   criteria: Record<string, string | null>,
@@ -163,6 +192,8 @@ export function Noul(
 }
 
 export type {
+  BatchRequest,
+  BatchResponse,
   ChoiceQuestion,
   NoulQuestion,
   ScoreQuestion,
@@ -171,4 +202,9 @@ export type {
   SystemOneResponse,
 };
 
-export { SystemOneRequestSchema, SystemOneResponseSchema };
+export {
+  BatchRequestSchema,
+  BatchResponseSchema,
+  SystemOneRequestSchema,
+  SystemOneResponseSchema,
+};
