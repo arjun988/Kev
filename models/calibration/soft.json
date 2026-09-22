@@ -1,0 +1,8 @@
+{
+  "name": "soft",
+  "readoutTemperature": 1.2,
+  "noulTemperature": 1.5,
+  "noulBias": 0,
+  "epsilon": 1e-9,
+  "description": "Softer distributions — use when options overlap or are ambiguous"
+}

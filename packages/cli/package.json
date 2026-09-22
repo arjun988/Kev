@@ -1,0 +1,27 @@
+{
+  "name": "@kev-ai/cli",
+  "version": "0.1.0",
+  "description": "CLI for Kev — ask decisions and manage the local server",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "kev": "./dist/cli.js"
+  },
+  "main": "./dist/cli.js",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "dev": "tsx src/cli.ts",
+    "test": "node -e \"process.exit(0)\""
+  },
+  "dependencies": {
+    "@kev-ai/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

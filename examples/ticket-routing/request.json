@@ -1,0 +1,25 @@
+{
+  "topic": {
+    "type": "choice",
+    "instructions": "Which team should handle this support ticket?",
+    "criteria": {
+      "billing": "Charges, refunds, invoices, payments",
+      "shipping": "Delivery delays, lost packages, tracking",
+      "technical": "Bugs, outages, product not working"
+    }
+  },
+  "severity": {
+    "type": "score",
+    "instructions": "How urgent is this ticket?",
+    "criteria": [
+      "can wait several days",
+      "handle this week",
+      "handle today",
+      "customer about to churn — act now"
+    ]
+  },
+  "escalate": {
+    "type": "noul",
+    "instructions": "Should this be escalated to a human agent immediately?"
+  }
+}

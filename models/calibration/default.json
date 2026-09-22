@@ -1,0 +1,8 @@
+{
+  "name": "default",
+  "readoutTemperature": 0.85,
+  "noulTemperature": 1.0,
+  "noulBias": 0,
+  "epsilon": 1e-9,
+  "description": "Balanced calibration for general text decisions"
+}

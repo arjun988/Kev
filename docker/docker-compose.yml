@@ -1,0 +1,30 @@
+services:
+  kev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      KEV_HOST: "0.0.0.0"
+      KEV_PORT: "3000"
+      KEV_BACKEND: "${KEV_BACKEND:-mock}"
+      KEV_LOG_LEVEL: "${KEV_LOG_LEVEL:-info}"
+      KEV_API_KEY: "${KEV_API_KEY:-}"
+      # Ollama — use host.docker.internal on Docker Desktop
+      KEV_OLLAMA_BASE_URL: "${KEV_OLLAMA_BASE_URL:-http://host.docker.internal:11434}"
+      KEV_OLLAMA_MODEL: "${KEV_OLLAMA_MODEL:-llama3.2}"
+      # OpenAI-compatible
+      KEV_OPENAI_BASE_URL: "${KEV_OPENAI_BASE_URL:-https://api.openai.com/v1}"
+      KEV_OPENAI_API_KEY: "${KEV_OPENAI_API_KEY:-}"
+      KEV_OPENAI_MODEL: "${KEV_OPENAI_MODEL:-gpt-4o-mini}"
+      KEV_STRATEGY: "${KEV_STRATEGY:-auto}"
+      KEV_CALIBRATION_PROFILE: "${KEV_CALIBRATION_PROFILE:-default}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s

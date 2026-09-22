@@ -1,0 +1,8 @@
+{
+  "name": "sharp",
+  "readoutTemperature": 0.5,
+  "noulTemperature": 0.7,
+  "noulBias": 0,
+  "epsilon": 1e-9,
+  "description": "Peekier distributions — use when options are clearly distinct"
+}
