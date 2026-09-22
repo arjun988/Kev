@@ -1,6 +1,6 @@
 {
   "name": "@kev-ai/adapters",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "LangChain and LlamaIndex adapters for Kev",
   "license": "Apache-2.0",
   "type": "module",
@@ -9,15 +9,21 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./langchain": {
       "types": "./dist/langchain.d.ts",
-      "import": "./dist/langchain.js"
+      "import": "./dist/langchain.js",
+      "require": "./dist/langchain.js",
+      "default": "./dist/langchain.js"
     },
     "./llamaindex": {
       "types": "./dist/llamaindex.d.ts",
-      "import": "./dist/llamaindex.js"
+      "import": "./dist/llamaindex.js",
+      "require": "./dist/llamaindex.js",
+      "default": "./dist/llamaindex.js"
     }
   },
   "files": ["dist"],

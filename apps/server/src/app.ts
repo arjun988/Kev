@@ -16,7 +16,7 @@ import type { Logger } from "./logger.js";
 import { RateLimiter } from "./rate-limit.js";
 import { createTelemetry } from "./telemetry.js";
 
-export const VERSION = "0.2.0";
+export const VERSION = "1.0.0";
 
 export type AppDeps = {
   env: ServerEnv;

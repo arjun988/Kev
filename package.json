@@ -1,6 +1,6 @@
 {
   "name": "kev",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Open-source System One decision engine — choice, score, and noul with calibrated probabilities",
   "license": "Apache-2.0",
@@ -13,6 +13,7 @@
     "dev": "turbo run dev --filter=@kev-ai/server",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "bench": "tsx benchmarks/run.ts",
     "clean": "turbo run clean && node -e \"require('fs').rmSync('node_modules',{recursive:true,force:true})\""
   },
   "devDependencies": {

@@ -24,7 +24,7 @@ const EvaluateSchema = z.object({
 });
 
 const server = new Server(
-  { name: "kev", version: "0.2.0" },
+  { name: "kev", version: "1.0.0" },
   { capabilities: { tools: {} } },
 );
 

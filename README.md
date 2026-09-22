@@ -1,109 +1,20 @@
 # Kev
 
-**Open-source System One decisions.**  
-Send a `state` and typed `questions` — get calibrated answers with probabilities. No free-form text to parse.
-
-Kev speaks the same decision contract as TypeSafe’s Jev (`choice` / `score` / `noul`) so existing recipes work when pointed at your own server. Fully **Apache-2.0**. No model training required — plug in Ollama, vLLM, or any OpenAI-compatible API.
-
-> Independent project. Not affiliated with TypeSafe AI or OpenJev.
-
----
-
-## What you get (Phase 0–3)
-
-| Piece | Package | Role |
-| --- | --- | --- |
-| Decision API | `@kev-ai/server` | `POST /v1/systemone` + **batch**, cache, rate limits, audit |
-| Playground | `apps/playground` | Brand-first UI at `/playground/` |
-| MCP | `@kev-ai/mcp` | Agent IDE tool (`kev_systemone`) |
-| Schemas | `@kev-ai/schema` | Zod types + OpenAPI (incl. images / batch) |
-| Engine | `@kev-ai/core` | Readout, cache, **cascade**, stability helpers |
-| Backends | `@kev-ai/backends` | `mock`, `ollama`, `openai` |
-| TS SDK | `@kev-ai/sdk` | Typed client + batch |
-| CLI | `@kev-ai/cli` | `kev ask` / `kev eval` |
-| Eval | `@kev-ai/eval` | Dataset + option-order stability harness |
-| Adapters | `@kev-ai/adapters` | LangChain + LlamaIndex wrappers |
-| Python SDK | `kev` | `pip install -e ./python` |
-| Model cards | `models/cards/` | Ollama / GGUF / MLX / vLLM FP8 notes |
-
----
-
-## Quick start
-
-### 1. Install
-
-Requires **Node 20+** and **pnpm 9**.
-
-```bash
-# from repo root
-pnpm install
-pnpm build
-```
-
-**If `corepack enable` fails on Windows** (`EPERM` under `C:\Program Files\nodejs`):
-
-```powershell
-# Option A — install pnpm into your user profile (no admin)
-iwr https://get.pnpm.io/install.ps1 -useb | iex
-# then restart the terminal and continue with pnpm install
-
-# Option B — one-off without a global install
-npx pnpm@9.15.0 install
-npx pnpm@9.15.0 build
-```
-
-Do **not** need `corepack enable` if pnpm is already on your PATH.
-Optional Python SDK:
-
-```bash
-cd python
-pip install -e .
-cd ..
-```
-
-Copy env defaults:
-
-```bash
-cp .env.example .env
-```
-
-### 2. Run the server (mock — no GPU, no API key)
-
-```bash
-# mock backend is the default
-pnpm --filter @kev-ai/server start
-# or during development:
-pnpm --filter @kev-ai/server dev
-```
-
-Server listens on `http://127.0.0.1:3000`.
-
-- Health: `GET /health`
-- Playground: [http://127.0.0.1:3000/playground/](http://127.0.0.1:3000/playground/)
-- OpenAPI: `GET /openapi.json`
-
-Check health:
-
-```bash
-curl http://127.0.0.1:3000/health
-```
-
-### 3. Make a decision
+**Typed decisions for software.**  
+Send context. Ask `choice`, `score`, or `noul`. Get calibrated probabilities back — not a paragraph to parse.
 
 ```bash
 curl -s http://127.0.0.1:3000/v1/systemone \
   -H 'Content-Type: application/json' \
   -d '{
-    "model": "kev-latest",
-    "state": "Customer: I was charged twice and I am furious.",
+    "state": "Charged twice. I am furious.",
     "questions": {
       "topic": {
         "type": "choice",
-        "instructions": "What is the issue about?",
+        "instructions": "Which team?",
         "criteria": {
-          "billing": "money / charges",
-          "bug": "product broken",
-          "account": "login or access"
+          "billing": "charges and refunds",
+          "technical": "bugs and outages"
         }
       },
       "escalate": {
@@ -114,95 +25,82 @@ curl -s http://127.0.0.1:3000/v1/systemone \
   }'
 ```
 
-Or use the CLI (after build):
-
-```bash
-pnpm --filter @kev-ai/cli exec kev demo
-# or once linked: kev demo
+```json
+{
+  "answers": {
+    "topic": {
+      "type": "choice",
+      "choice": "billing",
+      "confidence": 0.97,
+      "probabilities": { "billing": 0.97, "technical": 0.03 }
+    },
+    "escalate": { "type": "noul", "noul": 0.86 }
+  }
+}
 ```
+
+Then your code does the simple thing:
+
+```ts
+if (answers.escalate.noul > 0.7) routeToHuman();
+else assign(answers.topic.choice);
+```
+
+Kev is an open-source **System One** decision engine: Apache-2.0, self-hosted, compatible with the Jev-style wire format. Bring your own model (Ollama, vLLM, OpenAI-compatible) — or start with the built-in mock for offline demos.
+
+> Independent project. Not affiliated with TypeSafe AI or OpenJev.
 
 ---
 
-## Real models (Phase 1 backends)
+## Why Kev
 
-### Option A — Ollama (local, recommended)
+| You want… | Chat LLMs give you… | Kev gives you… |
+| --- | --- | --- |
+| A label | Prose you must parse | A typed key + distribution |
+| A gate | “Yes, I think so…” | `noul` ∈ [0, 1] you can threshold |
+| Confidence | Vibes | Concentration of the distribution |
+| Many judgments | N serial prompts | One round trip, questions in parallel |
+| Control | Vendor lock-in | Your GPU / your API key / your laptop |
 
-1. Install [Ollama](https://ollama.com) and pull a model:
+---
 
-```bash
-ollama pull llama3.2
-```
+## Install
 
-2. Configure and start Kev:
-
-```bash
-# .env
-KEV_BACKEND=ollama
-KEV_OLLAMA_BASE_URL=http://127.0.0.1:11434
-KEV_OLLAMA_MODEL=llama3.2
-KEV_STRATEGY=auto
-```
+**Requirements:** Node 20+, [pnpm](https://pnpm.io) 9.
 
 ```bash
+git clone https://github.com/arjun988/Kev.git
+cd Kev
+pnpm install
+pnpm build
+cp .env.example .env
 pnpm --filter @kev-ai/server start
 ```
 
-Ollama does not expose OpenAI-style token logprobs, so Kev auto-selects **constrained JSON** (or **parallel micro-score**). You still get typed probabilities you can threshold in code.
+Open the playground: [http://127.0.0.1:3000/playground/](http://127.0.0.1:3000/playground/)
 
-### Option B — OpenAI-compatible API
+<details>
+<summary>Windows: <code>corepack enable</code> fails with EPERM?</summary>
 
-Works with OpenAI, vLLM, Together, Groq, Fireworks, etc.
-
-```bash
-# .env
-KEV_BACKEND=openai
-KEV_OPENAI_BASE_URL=https://api.openai.com/v1
-KEV_OPENAI_API_KEY=sk-...
-KEV_OPENAI_MODEL=gpt-4o-mini
-KEV_STRATEGY=auto
+```powershell
+iwr https://get.pnpm.io/install.ps1 -useb | iex
+# restart the terminal, then pnpm install && pnpm build
 ```
 
-When the provider returns `top_logprobs`, Kev uses **letter-token readout** (one forward pass per question). If logprobs are rejected, it falls back automatically.
+</details>
 
-### Option C — Docker
+<details>
+<summary>Python SDK</summary>
 
 ```bash
-# mock (default)
-docker compose -f docker/docker-compose.yml up --build
-
-# Ollama on the host (Docker Desktop)
-KEV_BACKEND=ollama docker compose -f docker/docker-compose.yml up --build
+cd python && pip install -e . && cd ..
 ```
+
+</details>
 
 ---
 
-## Decision primitives
-
-| Type | When to use | Returns |
-| --- | --- | --- |
-| `choice` | Pick one labelled option (≤255) | `choice`, `probabilities`, `confidence` |
-| `score` | Ordered scale, 2–10 levels | weighted `score`, `probabilities`, `confidence` |
-| `noul` | Yes / no gate | `noul` ∈ [0, 1] (P(yes)) |
-
-Ask many questions in one request — they run in parallel and share the state.
-
-### Strategies (`KEV_STRATEGY`)
-
-| Value | Behavior |
-| --- | --- |
-| `auto` (default) | Prefer readout → constrained → parallel based on backend caps |
-| `readout` | Single-token letter scores + calibration softmax |
-| `constrained` | Force JSON `{"choice","confidence"}` |
-| `parallel` | One micro `{p}` call per option, then softmax |
-| `mock` | Deterministic heuristics (no LLM) |
-
-Calibration profiles live in `models/calibration/` (`default`, `sharp`, `soft`). Set `KEV_CALIBRATION_PROFILE=sharp` and/or tune `KEV_READOUT_TEMPERATURE` / `KEV_NOUL_TEMPERATURE`.
-
----
-
-## SDKs
-
-### TypeScript
+## 60-second TypeScript
 
 ```ts
 import { Choice, KevClient, Noul, Score } from "@kev-ai/sdk";
@@ -210,212 +108,183 @@ import { Choice, KevClient, Noul, Score } from "@kev-ai/sdk";
 const client = new KevClient({ baseUrl: "http://127.0.0.1:3000" });
 
 const res = await client.systemOne({
-  state: "Charged twice, furious.",
+  state: "Package stuck in transit for a week. Tracking frozen.",
   questions: {
-    topic: Choice("Team?", {
+    topic: Choice("Which team?", {
       billing: "charges",
+      shipping: "delivery / tracking",
       technical: "bugs",
     }),
-    escalate: Noul("Escalate now?"),
+    severity: Score("How urgent?", [
+      "can wait",
+      "this week",
+      "today",
+      "right now",
+    ]),
+    escalate: Noul("Page a human?"),
   },
 });
 
-if (res.answers.topic?.type === "choice") {
-  console.log(res.answers.topic.choice, res.answers.topic.confidence);
-}
+console.log(res.answers);
 ```
 
-Env vars the client understands: `KEV_BASE_URL`, `KEV_API_KEY`, `KEV_MODEL`  
-(also reads `TYPESAFE_BASE_URL` / `TYPESAFE_API_KEY` for Jev-client compatibility).
-
-### Python
+## 60-second Python
 
 ```python
 from kev import KevClient, Choice, Noul
 
 client = KevClient(base_url="http://127.0.0.1:3000")
 res = client.system_one(
-    state="Charged twice, furious.",
+    state="Charged twice. Furious.",
     questions={
-        "topic": Choice("Team?", {"billing": "charges", "technical": "bugs"}),
+        "topic": Choice("Which team?", {"billing": "charges", "technical": "bugs"}),
         "escalate": Noul("Escalate now?"),
     },
 )
-print(res.answers["topic"].choice)
-print(res.answers["escalate"].noul)
+print(res.answers["topic"].choice, res.answers["escalate"].noul)
 ```
 
 ---
 
-## Examples
+## How it works
 
-With the server running (`KEV_BACKEND=mock` is enough to smoke-test):
-
-```bash
-# TypeScript (needs pnpm build first)
-pnpm exec tsx examples/ticket-routing/run.ts
-pnpm exec tsx examples/moderation-gate/run.ts
-pnpm exec tsx examples/rag-groundedness/run.ts
-
-# Python
-python examples/ticket-routing/run.py
+```text
+┌────────────┐     POST /v1/systemone      ┌──────────────┐
+│  Your app  │  ─────────────────────────► │  Kev server  │
+│  SDK / CLI │  state + questions          │  validate    │
+└────────────┘  ◄───────────────────────── │  decide      │
+                   typed answers + probs   └──────┬───────┘
+                                                  │
+                         ┌────────────────────────┼────────────────────────┐
+                         ▼                        ▼                        ▼
+                   logprob readout          constrained JSON         parallel micro-score
+                   (when available)         (JSON mode)              (fallback)
+                         └────────────────────────┬────────────────────────┘
+                                                  ▼
+                                        Ollama · vLLM · OpenAI-compatible · mock
 ```
 
-| Example | Idea |
+**Strategies** (`KEV_STRATEGY=auto` by default):
+
+1. **Readout** — map options to letters, read first-token logprobs, calibrate with softmax  
+2. **Constrained** — force a valid JSON choice  
+3. **Parallel** — score each option with a tiny `{ "p": 0..1 }` call, then normalize  
+
+---
+
+## Features
+
+- **System One primitives** — `choice` (≤255), `score` (2–10 levels), `noul` (yes probability)
+- **Batch API** — `POST /v1/systemone/batch`
+- **Self-host DX** — Docker, playground UI, OpenAPI at `/openapi.json`
+- **Production knobs** — optional API keys, rate limits, LRU cache, audit log, OTel-style spans
+- **Agent-ready** — MCP server, LangChain / LlamaIndex adapters, screenshot `images[]` in state
+- **Scale taxonomies** — `cascadeChoice()` for &gt;255 options
+- **Measure it** — eval harness, option-order stability, published benchmark fixture
+
+---
+
+## Backends
+
+| `KEV_BACKEND` | Use when |
 | --- | --- |
-| `examples/ticket-routing` | Route + severity + escalate |
-| `examples/moderation-gate` | Spam/scam gate with allow/hold/block |
-| `examples/rag-groundedness` | Judge whether an answer is grounded in context |
+| `mock` | Offline demos & CI (default) |
+| `ollama` | Local models (`ollama pull llama3.2`) |
+| `openai` | OpenAI, vLLM, Groq, Together, MLX servers, … |
 
----
+Model recipes: [`models/cards/`](models/cards/README.md)
 
-## API reference
-
-| Method | Path | Description |
-| --- | --- | --- |
-| `GET` | `/health` | Liveness + backend info |
-| `GET` | `/openapi.json` | OpenAPI 3.1 document |
-| `POST` | `/v1/systemone` | Evaluate questions |
-
-Optional auth: set `KEV_API_KEY` on the server and send `Authorization: Bearer <key>`.
-
-Full field docs: open `http://127.0.0.1:3000/openapi.json` or see `packages/schema/src/openapi.ts`.
-
----
-
-## Repo layout
-
-```
-apps/server          Hono Decision API
-packages/schema      Zod schemas + OpenAPI
-packages/core        Readout / calibration / engine
-packages/backends    mock · ollama · openai-compatible
-packages/sdk-ts      TypeScript client (@kev-ai/sdk)
-packages/cli         kev CLI
-python/kev           Python SDK
-models/calibration   Calibration JSON profiles
-examples/            End-to-end recipes
-docker/              Dockerfile + compose
-plan.md              Product / roadmap
+```env
+KEV_BACKEND=ollama
+KEV_OLLAMA_MODEL=llama3.2
 ```
 
 ---
 
-## Scripts
+## Clients & tools
+
+| Thing | Package / path |
+| --- | --- |
+| HTTP API | `@kev-ai/server` |
+| TypeScript SDK | `@kev-ai/sdk` |
+| CLI | `@kev-ai/cli` → `kev ask` · `kev demo` · `kev eval` |
+| Python | `python/kev` |
+| MCP | `@kev-ai/mcp` |
+| Adapters | `@kev-ai/adapters` |
+| Recipes | [`awesome-kev/`](awesome-kev/README.md) |
+| Snippets | [`.vscode/kev.code-snippets`](.vscode/kev.code-snippets) |
 
 ```bash
-pnpm install          # install workspace deps
-pnpm build            # build all packages
-pnpm typecheck        # TypeScript check
-pnpm test             # unit tests (schema, core, backends)
-pnpm dev              # server in watch mode
-```
-
-Load config from a root `.env` (copy from `.env.example`). The server walks up from the current directory to find it.
-
----
-
-## Environment variables
-
-See [`.env.example`](.env.example).
-
-| Variable | Default | Meaning |
-| --- | --- | --- |
-| `KEV_BACKEND` | `mock` | `mock` \| `ollama` \| `openai` |
-| `KEV_HOST` / `KEV_PORT` | `0.0.0.0` / `3000` | Bind address |
-| `KEV_STRATEGY` | `auto` | Decision strategy |
-| `KEV_OLLAMA_*` | — | Local Ollama |
-| `KEV_OPENAI_*` | — | OpenAI-compatible provider |
-| `KEV_API_KEY` | empty | If set, require Bearer auth |
-| `KEV_CALIBRATION_PROFILE` | `default` | `default` \| `sharp` \| `soft` |
-
----
-
-## Batch, cache, auth, audit
-
-```bash
-curl -s http://127.0.0.1:3000/v1/systemone/batch \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "items": [
-      {
-        "id": "a",
-        "state": "Charged twice",
-        "questions": {
-          "topic": {
-            "type": "choice",
-            "instructions": "Topic?",
-            "criteria": { "billing": "money", "bug": "broken" }
-          }
-        }
-      }
-    ]
-  }'
-```
-
-| Env | Default | Meaning |
-| --- | --- | --- |
-| `KEV_API_KEY` | empty | Require `Authorization: Bearer …` |
-| `KEV_RATE_LIMIT` | `120` | Max requests / window / client (`0` disables) |
-| `KEV_CACHE_SIZE` | `256` | LRU response cache (`0` disables) |
-| `KEV_AUDIT` | `1` | JSON audit lines in logs |
-| `KEV_OTEL` | `0` | Span-style JSON hooks |
-
-Identical requests reuse the cache unless you pass `"no_cache": true`.
-
-## Eval & stability
-
-```bash
-pnpm --filter @kev-ai/cli exec kev eval dataset
+pnpm --filter @kev-ai/cli exec kev demo
 pnpm --filter @kev-ai/cli exec kev eval stability --trials 20
-# or
-pnpm --filter @kev-ai/eval exec kev-eval dataset
 ```
-
-Fixtures live in `packages/eval/fixtures/`. Dataset schema: `models/datasets/`.
-
-## MCP
-
-```bash
-pnpm --filter @kev-ai/mcp build
-# point Cursor / Claude at: node apps/mcp/dist/index.js
-# with KEV_BASE_URL=http://127.0.0.1:3000
-```
-
-## Adapters
-
-```ts
-import { createLangChainKevTool, createLlamaIndexKevTool } from "@kev-ai/adapters";
-
-const tool = createLangChainKevTool({ baseUrl: "http://127.0.0.1:3000" });
-```
-
-## Model cards
-
-See [`models/cards/README.md`](models/cards/README.md) for Ollama, GGUF, MLX, and vLLM/FP8 recipes.
-
-## Cascade (>255 options) & images
-
-- `cascadeChoice()` in `@kev-ai/core` — hierarchical choice
-- State may include `images: [{ url | b64, media_type }]` — see `examples/agent-step`
 
 ---
 
-## Compatibility notes
+## Benchmarks
 
-- Request/response shapes follow the System One / Jev Decision API (`state` + `questions` → `answers` + `usage`).
-- Point Jev-oriented clients at Kev with `TYPESAFE_BASE_URL=http://127.0.0.1:3000` (and optional `TYPESAFE_API_KEY`).
-- Kev extensions: `trace: true` on the request returns per-question strategy/backend metadata.
-- **No training** in this release. Kev is inference + API only. Dataset format under `models/datasets/` is for eval only.
+Honest, reproducible fixtures — not marketing slides.
+
+```bash
+pnpm bench
+# or: pnpm exec tsx benchmarks/run.ts --mode api --base-url http://127.0.0.1:3000
+```
+
+- Methodology (how to compare with OpenJev / chat / hosted Jev): [`benchmarks/METHODOLOGY.md`](benchmarks/METHODOLOGY.md)
+- Published reference table: [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md)
+
+Same questions. One attempt. Pin your commit and model id.
+
+---
+
+## Migrating from Jev
+
+Change the base URL. Re-tune thresholds on your labels.
+
+Full guide: [`MIGRATION.md`](MIGRATION.md)
+
+```bash
+export TYPESAFE_BASE_URL=http://127.0.0.1:3000   # TypeSafe SDKs
+# or
+export KEV_BASE_URL=http://127.0.0.1:3000
+```
+
+---
+
+## Project layout
+
+```text
+apps/server       Decision API
+apps/playground   Local UI
+apps/mcp          MCP server
+packages/*        schema · core · backends · sdk · cli · eval · adapters
+python/kev        Python client
+benchmarks/       Frozen fixtures + runner
+awesome-kev/      Curated recipes
+models/           Calibration profiles · model cards · dataset schema
+```
+
+---
+
+## Versioning
+
+**Kev 1.0** freezes the System One HTTP shape in `GET /openapi.json`.
+
+- **MAJOR** — breaking wire changes  
+- **MINOR** — additive endpoints / fields  
+- **PATCH** — fixes and docs  
+
+See [`CHANGELOG.md`](CHANGELOG.md).
 
 ---
 
 ## License
 
-Apache-2.0 — see [LICENSE](LICENSE).
+[Apache-2.0](LICENSE)
 
 ---
 
-## Roadmap
-
-Phases 0–3 are implemented in this tree. Next (see [`plan.md`](plan.md)): hosted demo, public benchmarks, v1.0 freeze.
+<p align="center">
+  <b>Kev</b> — decisions software can trust.<br/>
+  <sub>Ask for a label. Get a distribution.</sub>
+</p>

@@ -1,6 +1,6 @@
 {
   "name": "@kev-ai/cli",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "CLI for Kev — ask decisions and manage the local server",
   "license": "Apache-2.0",
   "type": "module",

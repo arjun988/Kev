@@ -25,4 +25,5 @@ htmlcov/
 !.vscode/extensions.json
 coverage/
 tmp/
-.cache/
+benchmarks/out/
+

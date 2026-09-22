@@ -6,7 +6,7 @@ export const openApiDocument = {
   openapi: "3.1.0",
   info: {
     title: "Kev Decision API",
-    version: "0.2.0",
+    version: "1.0.0",
     description:
       "Open-source System One decision engine. Send a state and typed questions; get calibrated answers with probabilities.",
     license: { name: "Apache-2.0", url: "https://www.apache.org/licenses/LICENSE-2.0" },

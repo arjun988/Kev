@@ -1,0 +1,117 @@
+{
+  "name": "routing-bench",
+  "description": "Frozen System One fixture for published Kev benchmarks",
+  "examples": [
+    {
+      "id": "billing-double-charge",
+      "state": "I was charged twice on my credit card invoice and want a refund",
+      "questions": {
+        "topic": {
+          "type": "choice",
+          "instructions": "Which team should handle this?",
+          "criteria": {
+            "billing": "charges, refunds, payments, invoices",
+            "shipping": "delivery and tracking",
+            "technical": "bugs and outages"
+          }
+        }
+      },
+      "expected": { "choice": { "topic": "billing" } }
+    },
+    {
+      "id": "tech-500",
+      "state": "Production is returning 500 errors after the last deploy and the app crashes on login",
+      "questions": {
+        "topic": {
+          "type": "choice",
+          "instructions": "Which team should handle this?",
+          "criteria": {
+            "billing": "charges and payments",
+            "technical": "bugs, crashes, outages",
+            "shipping": "packages and delivery"
+          }
+        }
+      },
+      "expected": { "choice": { "topic": "technical" } }
+    },
+    {
+      "id": "ship-delay",
+      "state": "My package has been stuck in transit for a week with no tracking updates",
+      "questions": {
+        "topic": {
+          "type": "choice",
+          "instructions": "Which team should handle this?",
+          "criteria": {
+            "billing": "charges and payments",
+            "technical": "bugs and outages",
+            "shipping": "delivery delays and tracking"
+          }
+        }
+      },
+      "expected": { "choice": { "topic": "shipping" } }
+    },
+    {
+      "id": "urgent-churn",
+      "state": "This is urgent ASAP — I am furious and will cancel if nobody replies today",
+      "questions": {
+        "escalate": {
+          "type": "noul",
+          "instructions": "Escalate to a human agent immediately?"
+        }
+      },
+      "expected": { "noul": { "escalate": { "min": 0.6 } } }
+    },
+    {
+      "id": "calm-thanks",
+      "state": "Thanks, everything is resolved. No rush.",
+      "questions": {
+        "escalate": {
+          "type": "noul",
+          "instructions": "Escalate to a human agent immediately?"
+        }
+      },
+      "expected": { "noul": { "escalate": { "max": 0.5 } } }
+    },
+    {
+      "id": "moderation-spam",
+      "state": "Buy cheap crypto now!!! guaranteed 1000% returns click here",
+      "questions": {
+        "spam": {
+          "type": "noul",
+          "instructions": "Is this unsolicited spam or a scam pitch?"
+        }
+      },
+      "expected": { "noul": { "spam": { "min": 0.35 } } }
+    },
+    {
+      "id": "rag-grounded",
+      "state": {
+        "retrieved_context": "Acme Plan Pro costs $49/month. Refunds within 14 days.",
+        "model_answer": "Acme Plan Pro is $49 per month and refunds are available within 14 days."
+      },
+      "questions": {
+        "grounded": {
+          "type": "noul",
+          "instructions": "Is every factual claim in model_answer supported by retrieved_context?"
+        }
+      },
+      "expected": { "noul": { "grounded": { "min": 0.2 } } }
+    },
+    {
+      "id": "account-login",
+      "state": "I cannot sign in — password reset fails and my account is locked out",
+      "questions": {
+        "topic": {
+          "type": "choice",
+          "instructions": "Which team should handle this?",
+          "criteria": {
+            "billing": "charges and payments",
+            "account": "login, password, locked out",
+            "technical": "product bugs unrelated to auth"
+          }
+        }
+      },
+      "expected": { "choice": { "topic": "account" } }
+    }
+  ]
+}
