@@ -16,7 +16,7 @@ export type OllamaConfig = {
 };
 
 type OllamaChatResponse = {
-  message?: { content?: string };
+  message?: { content?: string; thinking?: string };
   prompt_eval_count?: number;
   eval_count?: number;
   error?: string;
@@ -62,6 +62,9 @@ export class OllamaBackend implements InferenceBackend {
       model: this.model,
       messages: args.messages,
       stream: false,
+      // Qwen3 / thinking models otherwise spend the whole budget in `thinking`
+      // and return empty `content`, which breaks constrained decode.
+      think: false,
       options: {
         temperature: args.temperature,
         num_predict: args.maxTokens,
@@ -104,12 +107,21 @@ export class OllamaBackend implements InferenceBackend {
       );
     }
 
+    const text =
+      (data.message?.content ?? "").trim() ||
+      extractJsonBlob(data.message?.thinking ?? "");
+
     return {
-      text: data.message?.content ?? "",
+      text,
       usage: {
         inputTokens: data.prompt_eval_count ?? 0,
         outputTokens: data.eval_count ?? 0,
       },
     };
   }
+}
+
+function extractJsonBlob(text: string): string {
+  const match = text.match(/\{[\s\S]*\}/);
+  return match?.[0] ?? text;
 }

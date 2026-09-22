@@ -14,6 +14,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "bench": "tsx benchmarks/run.ts",
+    "bench:heldout": "tsx benchmarks/suites/openjev-heldout/run.ts",
     "clean": "turbo run clean && node -e \"require('fs').rmSync('node_modules',{recursive:true,force:true})\""
   },
   "devDependencies": {

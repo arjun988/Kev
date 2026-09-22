@@ -26,4 +26,5 @@ htmlcov/
 coverage/
 tmp/
 benchmarks/out/
+benchmarks/suites/openjev-heldout/raw/
 

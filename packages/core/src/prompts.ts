@@ -1,4 +1,9 @@
-import { formatState, optionLetters, type State } from "@kev-ai/schema";
+import {
+  formatState,
+  optionLetters,
+  READOUT_LETTERS,
+  type State,
+} from "@kev-ai/schema";
 import type {
   ChoiceQuestion,
   NoulQuestion,
@@ -11,9 +16,26 @@ export type PromptOption = {
   description: string | null;
 };
 
-export function choiceOptions(question: ChoiceQuestion): PromptOption[] {
+/**
+ * Labels for prompts. Readout uses A–Z/a–z (≤52). Constrained/parallel may
+ * exceed that with numeric labels up to the schema max (255).
+ */
+export function optionLabels(
+  count: number,
+  mode: "readout" | "any" = "any",
+): string[] {
+  if (mode === "readout" || count <= READOUT_LETTERS.length) {
+    return optionLetters(count);
+  }
+  return Array.from({ length: count }, (_, i) => String(i + 1));
+}
+
+export function choiceOptions(
+  question: ChoiceQuestion,
+  mode: "readout" | "any" = "any",
+): PromptOption[] {
   const keys = Object.keys(question.criteria);
-  const letters = optionLetters(keys.length);
+  const letters = optionLabels(keys.length, mode);
   return keys.map((key, i) => ({
     letter: letters[i]!,
     key,
@@ -21,8 +43,11 @@ export function choiceOptions(question: ChoiceQuestion): PromptOption[] {
   }));
 }
 
-export function scoreOptions(question: ScoreQuestion): PromptOption[] {
-  const letters = optionLetters(question.criteria.length);
+export function scoreOptions(
+  question: ScoreQuestion,
+  mode: "readout" | "any" = "any",
+): PromptOption[] {
+  const letters = optionLabels(question.criteria.length, mode);
   return question.criteria.map((description, i) => ({
     letter: letters[i]!,
     key: String(i),

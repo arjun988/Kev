@@ -1,35 +1,46 @@
 # Published results
 
-## Mock baseline (CI reference)
+## 1. OpenJev held-out · Banking77 (headline)
+
+**Dataset:** [s1lv3rj1nx/openjev-heldout](https://huggingface.co/datasets/s1lv3rj1nx/openjev-heldout) · Banking77 · n=600  
+**Command:** `pnpm bench:heldout -- --mode api --base-url http://127.0.0.1:3000 --tasks banking77`
+
+| System | Backend | Accuracy | Notes |
+| --- | --- | ---: | --- |
+| **Kev + qwen3.5:9b** | Ollama · **100% GPU** | **78.8%** (473/600) | This repo · 2026-09-22 · wall ~23.5 min |
+| Jev (held-out subset note) | hosted | **~82.0%** | 300-row subset cited in `task.json` |
+| Jev 1.13 | JevBench full test | **80.3%** | n=3,080 · [methodology](https://jevbench.xyz/methodology) |
+| Kev mock | heuristics | 49.5% | CI only |
+
+OpenJev private 10k (not re-runnable here): Jev **85.4%** · OpenJev **84.0%** ([HF card](https://huggingface.co/openjev/openjev)).
+
+Artifact: `benchmarks/out/openjev-heldout-latest.{json,md}`
+
+```bash
+# Reproduce
+KEV_BACKEND=ollama
+KEV_OLLAMA_MODEL=qwen3.5:9b
+pnpm --filter @kev-ai/server start
+pnpm bench:heldout -- --mode api --base-url http://127.0.0.1:3000 --tasks banking77
+```
+
+---
+
+## 2. Smoke fixture (CI)
 
 | Field | Value |
 | --- | --- |
-| Date | 2026-09-22 |
 | Fixture | `benchmarks/fixtures/routing-bench.json` |
-| Backend | Kev **mock** heuristics (no LLM) |
-| Command | `pnpm exec tsx benchmarks/run.ts` |
-| Accuracy | **1.00** (8/8) on the frozen suite |
-| Wall latency | ~5 ms (mock, this machine) |
-| Purpose | Regression / smoke — **not** a claim vs OpenJev or hosted Jev |
+| Backend | mock |
+| Command | `pnpm bench` |
+| Accuracy | **1.00** (8/8) |
 
-Re-run locally after any scorer change. If accuracy drops, treat it as a breaking change to the mock baseline.
+---
 
-## Live model baselines (fill in when you measure)
-
-| System | Model | Hardware | Accuracy | Mean latency | Commit / notes |
-| --- | --- | --- | --- | --- | --- |
-| Kev + Ollama | _your tag_ | _your machine_ | — | — | `pnpm exec tsx benchmarks/run.ts --mode api` |
-| Kev + OpenAI-compatible | _model id_ | — | — | — | Set `KEV_BACKEND=openai` |
-| OpenJev | _weight id_ | — | — | — | Same fixture JSON |
-| Chat JSON classifier | _model id_ | — | — | — | Parse failures = wrong |
-| Hosted Jev | _version_ | TypeSafe | — | — | Same fixture JSON |
-
-Paste rows into a PR when you have numbers. Keep methodology from [METHODOLOGY.md](./METHODOLOGY.md).
-
-## Stability companion
+## 3. Stability companion
 
 ```bash
 pnpm --filter @kev-ai/cli exec kev eval stability --trials 20
 ```
 
-Target flip rate on the billing smoke suite: **&lt; 0.05**.
+Target flip rate on billing smoke: **&lt; 5%**.

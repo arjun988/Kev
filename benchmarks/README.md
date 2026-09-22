@@ -1,34 +1,25 @@
 # Benchmarks
 
-Honest, reproducible System One decision benchmarks for **Kev**.
+Honest, reproducible System One benchmarks for **Kev**.
 
-These numbers measure **your** stack (mock heuristics, Ollama, or an OpenAI-compatible model). They are **not** a claim that Kev matches hosted Jev or OpenJev weights on every task. When you compare against another system, run the **same fixture file** on both sides and publish both the command and the git commit.
+## What OpenJev / Jev actually used
 
-## What’s in the box
+| Suite | Public? | What it is |
+| --- | --- | --- |
+| **OpenJev 10k text** (34 sources) | Aggregates only | Jev **85.4%** · OpenJev **84.0%** on [HF card](https://huggingface.co/openjev/openjev) |
+| **openjev-heldout** | **Yes** | Banking77, CLINC, MASSIVE, AG News, SST-5, Civil Comments, … |
+| **JevBench Banking77** | Protocol public | Jev 1.13 **80.3%** on full test (n=3,080) |
 
-| Path | Purpose |
-| --- | --- |
-| `fixtures/routing-bench.json` | Routing + urgency + light NLI-style gates |
-| `run.ts` | Reproducible runner (mock by default; `--mode api` for a live server) |
-| `RESULTS.md` | Published reference numbers for the mock baseline in this repo |
-| `METHODOLOGY.md` | How to compare fairly with OpenJev / chat / Jev |
+We re-run the **public held-out suite** so anyone can reproduce. We cite the 10k / JevBench numbers as reference — we do not invent a fake “Kev = 84%” claim against a private set.
 
-## Quick run
+## Quick commands
 
 ```bash
-# from repo root (after pnpm build)
-pnpm exec tsx benchmarks/run.ts
-pnpm exec tsx benchmarks/run.ts --mode api --base-url http://127.0.0.1:3000
+# CI smoke (8 examples)
+pnpm bench
+
+# Same suite OpenJev uses for held-out generalization
+pnpm exec tsx benchmarks/suites/openjev-heldout/run.ts
 ```
 
-Exit code is non-zero if accuracy falls below the threshold (default `0.75` for mock).
-
-## Comparing to OpenJev / chat baselines
-
-1. Freeze `fixtures/routing-bench.json` (do not edit mid-run).
-2. Run Kev → save `benchmarks/out/kev.json`.
-3. Run the other system on the **same** `state` + `questions` → save its answers in the same shape (or map into ours).
-4. Score both with the same `expected` keys in the fixture.
-5. Report: model id, hardware, commit SHA, timestamp, accuracy, mean latency, flip-rate if you also run `kev eval stability`.
-
-See [METHODOLOGY.md](./METHODOLOGY.md).
+Details: [`suites/openjev-heldout/README.md`](./suites/openjev-heldout/README.md) · methodology: [`METHODOLOGY.md`](./METHODOLOGY.md) · numbers: [`RESULTS.md`](./RESULTS.md)

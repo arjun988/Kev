@@ -10,6 +10,7 @@ import type {
   ScoreQuestion,
   State,
 } from "@kev-ai/schema";
+import { READOUT_LETTERS } from "@kev-ai/schema";
 import {
   confidenceFromDistribution,
   pickArgmax,
@@ -18,6 +19,7 @@ import {
   weightedScore,
   type CalibrationProfile,
 } from "./calibration.js";
+import { cascadeChoice } from "./cascade.js";
 import {
   buildConstrainedPrompt,
   buildMicroScorePrompt,
@@ -77,15 +79,24 @@ export type EngineResult = {
   trace: QuestionTrace;
 };
 
-function optionsFor(question: Question): PromptOption[] {
+function optionsFor(
+  question: Question,
+  mode: "readout" | "any" = "any",
+): PromptOption[] {
   switch (question.type) {
     case "choice":
-      return choiceOptions(question);
+      return choiceOptions(question, mode);
     case "score":
-      return scoreOptions(question);
+      return scoreOptions(question, mode);
     case "noul":
       return noulOptions(question);
   }
+}
+
+function choiceOptionCount(question: Question): number {
+  if (question.type === "choice") return Object.keys(question.criteria).length;
+  if (question.type === "score") return question.criteria.length;
+  return 2;
 }
 
 function extractLetterLogprobs(
@@ -163,6 +174,9 @@ function parseConstrainedChoice(
   options: PromptOption[],
 ): { key: string; confidence: number } {
   const keys = new Set(options.map((o) => o.key));
+  const byLower = new Map(
+    options.map((o) => [o.key.toLowerCase(), o.key] as const),
+  );
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
@@ -170,17 +184,32 @@ function parseConstrainedChoice(
         choice?: unknown;
         confidence?: unknown;
       };
-      if (typeof obj.choice === "string" && keys.has(obj.choice)) {
-        const confidence =
-          typeof obj.confidence === "number"
-            ? Math.min(1, Math.max(0, obj.confidence))
-            : 0.5;
-        return { key: obj.choice, confidence };
+      if (typeof obj.choice === "string") {
+        const raw = obj.choice.trim();
+        const key =
+          (keys.has(raw) ? raw : undefined) ??
+          byLower.get(raw.toLowerCase()) ??
+          options.find((o) => raw.includes(o.key) || o.key.includes(raw))?.key;
+        if (key) {
+          const confidence =
+            typeof obj.confidence === "number"
+              ? Math.min(1, Math.max(0, obj.confidence))
+              : 0.5;
+          return { key, confidence };
+        }
       }
     }
   } catch {
     // fall through
   }
+  // Prefer the longest option key that appears in the free text
+  let best: { key: string; len: number } | null = null;
+  for (const opt of options) {
+    if (text.includes(opt.key) && opt.key.length > (best?.len ?? 0)) {
+      best = { key: opt.key, len: opt.key.length };
+    }
+  }
+  if (best) return { key: best.key, confidence: 0.45 };
   // Letter fallback
   const letter = text.trim()[0];
   const byLetter = options.find((o) => o.letter === letter);
@@ -256,6 +285,17 @@ export class DecisionEngine {
     question: Question,
   ): Promise<EngineResult> {
     const resolved = this.resolveStrategy();
+
+    // Letter readout cannot exceed 52 options — cascade those only.
+    // Constrained JSON can handle the full taxonomy in one pass (better for Ollama).
+    if (
+      question.type === "choice" &&
+      resolved === "readout" &&
+      Object.keys(question.criteria).length > READOUT_LETTERS.length
+    ) {
+      return this.runCascadedChoice(state, question);
+    }
+
     switch (resolved) {
       case "readout":
         return this.runReadout(state, question);
@@ -282,11 +322,40 @@ export class DecisionEngine {
     return "parallel";
   }
 
+  private async runCascadedChoice(
+    state: State,
+    question: ChoiceQuestion,
+  ): Promise<EngineResult> {
+    const cascaded = await cascadeChoice(this, state, question, {
+      chunkSize: 16,
+    });
+    return {
+      answer: {
+        type: "choice",
+        choice: cascaded.choice,
+        confidence: cascaded.confidence,
+        probabilities: cascaded.probabilities,
+      },
+      usage: { inputTokens: 0, outputTokens: 0 },
+      trace: {
+        strategy: "readout",
+        backend: this.backend.capabilities.name,
+        option_keys: Object.keys(question.criteria),
+        raw_scores: {
+          cascade_depth: cascaded.path.length,
+          cascade_groups: Math.ceil(
+            Object.keys(question.criteria).length / READOUT_LETTERS.length,
+          ),
+        },
+      },
+    };
+  }
+
   private async runReadout(
     state: State,
     question: Question,
   ): Promise<EngineResult> {
-    const options = optionsFor(question);
+    const options = optionsFor(question, "readout");
     const { system, user } = buildReadoutPrompt({
       state,
       instructions: question.instructions,
@@ -442,7 +511,7 @@ export class DecisionEngine {
         { role: "system", content: system },
         { role: "user", content: user },
       ],
-      maxTokens: 64,
+      maxTokens: Math.min(256, 48 + options.length),
       temperature: 0,
       responseFormat: this.backend.capabilities.supportsJsonMode
         ? "json"

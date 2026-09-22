@@ -20,10 +20,21 @@
 
 Kev is **API-compatible** with the System One contract. That does **not** mean identical probabilities to proprietary or third-party weights.
 
+## Primary public suite
+
+**Dataset:** [s1lv3rj1nx/openjev-heldout](https://huggingface.co/datasets/s1lv3rj1nx/openjev-heldout)
+
+This is the public held-out set used around OpenJev (Banking77, CLINC, MASSIVE, AG News, SST-5, Civil Comments, …). OpenJev’s **10k / 34-source** leaderboard numbers are aggregates only — cite them as reference, do not claim you re-ran that private mix unless you have the questions.
+
+```bash
+pnpm bench:heldout
+```
+
 ## Scoring
 
 For each example with `expected.choice`, the top choice key must match.  
-For `expected.noul`, the probability must fall in `[min, max]` when provided.
+For `expected.score`, argmax of the score distribution must match the integer label.  
+For `expected.noul` / boolean toxicity labels, treat `noul ≥ 0.5` as positive unless a range is given.
 
 Accuracy = `#correct / #examples with expectations`.
 

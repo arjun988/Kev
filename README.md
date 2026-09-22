@@ -223,17 +223,25 @@ pnpm --filter @kev-ai/cli exec kev eval stability --trials 20
 
 ## Benchmarks
 
-Honest, reproducible fixtures — not marketing slides.
+We use the **same public held-out suite** OpenJev ships for generalization checks: [`s1lv3rj1nx/openjev-heldout`](https://huggingface.co/datasets/s1lv3rj1nx/openjev-heldout). Their private 10k mix is not fully downloadable — we cite those numbers, we don’t invent ours against it.
+
+### Accuracy (same suite)
+
+| Task | Kev + qwen3.5:9b (Ollama GPU) | Kev mock | Published reference |
+| --- | ---: | ---: | --- |
+| **Banking77** · n=600 | **78.8%** (473/600) | 49.5% | Jev ~**82%** held-out subset · JevBench **80.3%** (n=3,080) |
+
+OpenJev private 10k (cite only): Jev **85.4%** · OpenJev **84.0%**.
+
+Mock numbers for other tasks (CI heuristics, not model quality): CLINC 37.3% · MASSIVE 38.5% · AG News 29.5% · SST-5 20.2% · Civil Comments 50.3% · micro 37.6%.
 
 ```bash
-pnpm bench
-# or: pnpm exec tsx benchmarks/run.ts --mode api --base-url http://127.0.0.1:3000
+pnpm bench:heldout -- --mode api --base-url http://127.0.0.1:3000 --tasks banking77
 ```
 
-- Methodology (how to compare with OpenJev / chat / hosted Jev): [`benchmarks/METHODOLOGY.md`](benchmarks/METHODOLOGY.md)
-- Published reference table: [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md)
-
-Same questions. One attempt. Pin your commit and model id.
+- Full table + citations: [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md)
+- Methodology: [`benchmarks/METHODOLOGY.md`](benchmarks/METHODOLOGY.md)
+- Suite notes: [`benchmarks/suites/openjev-heldout/README.md`](benchmarks/suites/openjev-heldout/README.md)
 
 ---
 

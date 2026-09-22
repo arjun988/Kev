@@ -51,9 +51,11 @@ export class OpenAICompatibleBackend implements InferenceBackend {
   constructor(private readonly config: OpenAICompatibleConfig) {
     this.fetchImpl = resolveFetch(config.fetchImpl);
     this.timeoutMs = config.timeoutMs ?? 120_000;
+    const gemini = isGeminiBaseUrl(config.baseUrl);
     this.capabilities = {
-      name: "openai-compatible",
-      supportsLogprobs: config.supportsLogprobs ?? true,
+      name: gemini ? "gemini-openai-compatible" : "openai-compatible",
+      // Gemini's OpenAI-compat endpoint does not expose letter logprobs reliably
+      supportsLogprobs: config.supportsLogprobs ?? !gemini,
       supportsJsonMode: config.supportsJsonMode ?? true,
     };
   }
@@ -164,6 +166,18 @@ function extractTopLogprobs(
   }
 
   return undefined;
+}
+
+function isGeminiBaseUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return (
+      host.includes("generativelanguage.googleapis.com") ||
+      host.includes("ai.google.dev")
+    );
+  } catch {
+    return /generativelanguage\.googleapis\.com|ai\.google\.dev/i.test(url);
+  }
 }
 
 function trimSlash(url: string): string {
