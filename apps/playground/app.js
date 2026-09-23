@@ -4,7 +4,8 @@ const viz = document.getElementById("viz");
 const submitBtn = document.getElementById("submitBtn");
 const formError = document.getElementById("formError");
 const healthLine = document.getElementById("healthLine");
-const topicTitle = document.getElementById("topicTitle");
+const topicBlurb = document.getElementById("topicBlurb");
+const questionsView = document.getElementById("questionsView");
 
 const choiceBlock = document.getElementById("choiceBlock");
 const scoreBlock = document.getElementById("scoreBlock");
@@ -15,7 +16,7 @@ const imageField = document.getElementById("imageField");
 const topics = {
   support: {
     title: "Support routing",
-    stateLabel: "Ticket / message",
+    blurb: "Route tickets and decide whether to escalate.",
     showChoice: true,
     showScore: false,
     showNoul: true,
@@ -32,7 +33,7 @@ const topics = {
   },
   moderation: {
     title: "Moderation gate",
-    stateLabel: "User comment",
+    blurb: "Toxicity gate before a comment goes live.",
     showChoice: false,
     showScore: false,
     showNoul: true,
@@ -44,7 +45,7 @@ const topics = {
   },
   content: {
     title: "Content quality",
-    stateLabel: "Draft text to score",
+    blurb: "Score a draft reply before it sends.",
     showChoice: false,
     showScore: true,
     showNoul: true,
@@ -64,7 +65,7 @@ const topics = {
   },
   vision: {
     title: "Vision triage",
-    stateLabel: "Caption / context",
+    blurb: "Triage a checkout screenshot with typed questions.",
     showChoice: true,
     showScore: false,
     showNoul: true,
@@ -83,7 +84,7 @@ const topics = {
   },
   intent: {
     title: "Assistant intent",
-    stateLabel: "User utterance",
+    blurb: "Route an assistant utterance to the right skill.",
     showChoice: true,
     showScore: false,
     showNoul: false,
@@ -102,6 +103,30 @@ const topics = {
 
 let activeTopic = "support";
 
+function renderQuestionsView(t) {
+  const lines = [];
+  if (t.showChoice) {
+    const keys = Object.keys(t.choiceCriteria ?? {}).join(" · ");
+    lines.push(
+      `<p class="q-line"><span class="q-name">topic</span> <span class="q-type">choice</span> ${escapeHtml(keys)}</p>`,
+    );
+  }
+  if (t.showScore) {
+    const levels = (t.scoreCriteria ?? [])
+      .map((s) => String(s).split(":")[0].trim())
+      .join(" · ");
+    lines.push(
+      `<p class="q-line"><span class="q-name">quality</span> <span class="q-type">score</span> ${escapeHtml(levels)}</p>`,
+    );
+  }
+  if (t.showNoul) {
+    lines.push(
+      `<p class="q-line"><span class="q-name">gate</span> <span class="q-type">noul</span> ${escapeHtml(t.noulInstr ?? "")}</p>`,
+    );
+  }
+  questionsView.innerHTML = lines.join("") || `<p class="q-line">No questions</p>`;
+}
+
 function applyTopic(key) {
   const t = topics[key];
   if (!t) return;
@@ -111,9 +136,9 @@ function applyTopic(key) {
     el.classList.toggle("active", el.dataset.topic === key);
   });
 
-  topicTitle.textContent = t.title;
-  document.getElementById("stateLabel").textContent = t.stateLabel;
+  if (topicBlurb) topicBlurb.textContent = t.blurb ?? t.title;
   document.getElementById("state").value = t.state;
+  renderQuestionsView(t);
 
   choiceBlock.hidden = !t.showChoice;
   scoreBlock.hidden = !t.showScore;
@@ -172,11 +197,11 @@ function setView(view) {
   const showViz = view === "viz";
   viz.hidden = !showViz;
   out.hidden = showViz;
-  document.querySelectorAll(".tab").forEach((tab) => {
-    const active = tab.dataset.view === view;
-    tab.classList.toggle("active", active);
-    tab.setAttribute("aria-selected", String(active));
-  });
+  const toggle = document.getElementById("jsonToggle");
+  if (toggle) {
+    toggle.dataset.view = showViz ? "raw" : "viz";
+    toggle.textContent = showViz ? "View JSON" : "View summary";
+  }
 }
 
 function pct(n) {
@@ -197,45 +222,55 @@ function renderViz(data) {
 
   for (const [name, ans] of Object.entries(answers)) {
     if (ans.type === "choice") {
+      const conf = Number(ans.confidence ?? 0);
       const entries = Object.entries(ans.probabilities ?? {}).sort(
         (a, b) => b[1] - a[1],
       );
       const bars = entries
         .map(([key, p]) => {
-          const winner = key === ans.choice;
           return `<div class="bar-row">
             <span class="bar-key">${escapeHtml(key)}</span>
-            <div class="bar-track"><div class="bar-fill${winner ? " winner" : ""}" data-w="${p}"></div></div>
-            <span class="bar-pct">${pct(p)}</span>
+            <div class="bar-track"><div class="bar-fill" data-w="${p}"></div></div>
+            <span class="bar-pct">${Math.round(p * 100)}%</span>
           </div>`;
         })
         .join("");
       blocks.push(`<article class="answer-block">
         <div class="answer-meta">
-          <div>
-            <div class="answer-type">choice · ${escapeHtml(name)}</div>
-            <div class="answer-pick">${escapeHtml(ans.choice)}</div>
+          <span class="answer-key">${escapeHtml(name)}</span>
+          <div class="answer-right">
+            <span class="answer-pick">${escapeHtml(ans.choice)}</span>
+            <span class="badge success">CONF ${conf.toFixed(2)}</span>
           </div>
-          <div class="answer-conf">${pct(ans.confidence ?? 0)}</div>
         </div>
         ${bars}
       </article>`);
     } else if (ans.type === "noul") {
       const p = Number(ans.noul ?? 0);
+      const yes = p >= 0.5;
+      const tone = yes ? "danger" : "info";
+      const label = yes ? `YES ${p.toFixed(2)}` : `NO ${p.toFixed(2)}`;
       blocks.push(`<article class="answer-block">
         <div class="answer-meta">
-          <div>
-            <div class="answer-type">noul · ${escapeHtml(name)}</div>
-            <div class="answer-pick">${pct(p)}</div>
+          <span class="answer-key">${escapeHtml(name)}</span>
+          <div class="answer-right">
+            <span class="answer-pick">${yes ? "YES" : "NO"}</span>
+            <span class="badge ${tone}">${label}</span>
           </div>
-          <div class="answer-conf">${
-            p >= 0.7 ? "likely yes" : p <= 0.3 ? "likely no" : "borderline"
-          }</div>
         </div>
-        <div class="bar-track"><div class="bar-fill winner" data-w="${p}"></div></div>
-        <div class="noul-scale"><span>0</span><span>1</span></div>
+        <div class="bar-row">
+          <span class="bar-key">yes</span>
+          <div class="bar-track"><div class="bar-fill" data-w="${p}"></div></div>
+          <span class="bar-pct">${Math.round(p * 100)}%</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-key">no</span>
+          <div class="bar-track"><div class="bar-fill" data-w="${1 - p}"></div></div>
+          <span class="bar-pct">${Math.round((1 - p) * 100)}%</span>
+        </div>
       </article>`);
     } else if (ans.type === "score") {
+      const conf = Number(ans.confidence ?? 0);
       const entries = Object.entries(ans.probabilities ?? {}).sort(
         (a, b) => Number(a[0]) - Number(b[0]),
       );
@@ -244,20 +279,23 @@ function renderViz(data) {
           const label = ans.legend?.[key] ?? key;
           return `<div class="bar-row">
             <span class="bar-key" title="${escapeHtml(label)}">${escapeHtml(
-              String(key),
+              String(label).split(":")[0] || key,
             )}</span>
             <div class="bar-track"><div class="bar-fill" data-w="${p}"></div></div>
-            <span class="bar-pct">${pct(p)}</span>
+            <span class="bar-pct">${Math.round(p * 100)}%</span>
           </div>`;
         })
         .join("");
+      const pick =
+        ans.legend?.[String(Math.round(Number(ans.score)))] ??
+        Number(ans.score).toFixed(2);
       blocks.push(`<article class="answer-block">
         <div class="answer-meta">
-          <div>
-            <div class="answer-type">score · ${escapeHtml(name)}</div>
-            <div class="answer-pick">${Number(ans.score).toFixed(2)}</div>
+          <span class="answer-key">${escapeHtml(name)}</span>
+          <div class="answer-right">
+            <span class="answer-pick">${escapeHtml(String(pick).split(":")[0])}</span>
+            <span class="badge info">CONF ${conf.toFixed(2)}</span>
           </div>
-          <div class="answer-conf">${pct(ans.confidence ?? 0)}</div>
         </div>
         ${bars}
       </article>`);
@@ -403,8 +441,9 @@ document.querySelectorAll(".topic").forEach((btn) => {
   btn.addEventListener("click", () => applyTopic(btn.dataset.topic));
 });
 
-document.querySelectorAll(".tab").forEach((tab) => {
-  tab.addEventListener("click", () => setView(tab.dataset.view));
+document.getElementById("jsonToggle")?.addEventListener("click", (e) => {
+  const view = e.currentTarget.dataset.view || "raw";
+  setView(view);
 });
 
 async function pingHealth() {
