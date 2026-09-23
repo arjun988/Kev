@@ -227,16 +227,17 @@ We use the **same public held-out suite** OpenJev ships for generalization check
 
 ### Accuracy (same suite)
 
-| Task | Kev + qwen3.5:9b (Ollama GPU) | Kev mock | Published reference |
+| Task | Kev + qwen3.5:9b (Ollama GPU) | Chance | Published reference |
 | --- | ---: | ---: | --- |
-| **Banking77** · n=600 | **78.8%** (473/600) | 49.5% | Jev ~**82%** held-out subset · JevBench **80.3%** (n=3,080) |
+| **Banking77** · n=600 | **78.8%** (473/600) | 1.3% | Jev ~**82%** held-out · JevBench **80.3%** |
+| **CLINC OOS** · n=600 | **86%** (516/600) | 0.7% | — |
+| **AG News** · n=600 | **86.5%** (519/600) | 25.0% | — |
+| **Civil Comments toxicity** · n=600 | **73.5%** (441/600) | 50.0% | — |
 
 OpenJev private 10k (cite only): Jev **85.4%** · OpenJev **84.0%**.
 
-Mock numbers for other tasks (CI heuristics, not model quality): CLINC 37.3% · MASSIVE 38.5% · AG News 29.5% · SST-5 20.2% · Civil Comments 50.3% · micro 37.6%.
-
 ```bash
-pnpm bench:heldout -- --mode api --base-url http://127.0.0.1:3000 --tasks banking77
+pnpm bench:heldout -- --mode api --base-url http://127.0.0.1:3000 --tasks banking77,clinc_oos,ag_news,civil_comments_toxicity
 ```
 
 - Full table + citations: [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md)
