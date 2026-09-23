@@ -3,6 +3,9 @@
   <img src="https://img.shields.io/badge/version-1.0.0-111111?style=flat-square" alt="v1.0.0" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-222?style=flat-square" alt="Node 20+" />
   <img src="https://img.shields.io/badge/System%20One-choice%20%7C%20score%20%7C%20noul-0a0a0a?style=flat-square" alt="System One" />
+  <a href="https://www.npmjs.com/package/@kev-ai/sdk"><img src="https://img.shields.io/npm/v/@kev-ai/sdk?style=flat-square&label=%40kev-ai%2Fsdk" alt="@kev-ai/sdk" /></a>
+  <a href="https://www.npmjs.com/package/@kev-ai/server"><img src="https://img.shields.io/npm/v/@kev-ai/server?style=flat-square&label=%40kev-ai%2Fserver" alt="@kev-ai/server" /></a>
+  <a href="https://www.npmjs.com/package/@kev-ai/cli"><img src="https://img.shields.io/npm/v/@kev-ai/cli?style=flat-square&label=%40kev-ai%2Fcli" alt="@kev-ai/cli" /></a>
 </p>
 
 <h1 align="center">NotJev : Kev</h1>
@@ -14,6 +17,7 @@
 </p>
 
 <p align="center">
+  <a href="#install">Install</a> ·
   <a href="#docs--website">Docs site</a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="#benchmarks">Benchmarks</a> ·
@@ -22,6 +26,30 @@
   <a href="#clients--tools">SDKs</a> ·
   <a href="MIGRATION.md">Migrate from Jev</a>
 </p>
+
+---
+
+## Install
+
+```bash
+npm install @kev-ai/sdk
+npm install -g @kev-ai/server @kev-ai/cli
+```
+
+| Package | What | npm |
+| --- | --- | --- |
+| **`@kev-ai/sdk`** | TypeScript client (`choice` / `score` / `noul`) | [npmjs.com/package/@kev-ai/sdk](https://www.npmjs.com/package/@kev-ai/sdk) |
+| **`@kev-ai/server`** | Decision API + playground → `kev-server` | [npmjs.com/package/@kev-ai/server](https://www.npmjs.com/package/@kev-ai/server) |
+| **`@kev-ai/cli`** | CLI + MCP → `kev` / `kev-mcp` | [npmjs.com/package/@kev-ai/cli](https://www.npmjs.com/package/@kev-ai/cli) |
+
+```bash
+kev-server    # http://127.0.0.1:3000  (+ /playground/)
+kev demo
+kev health
+```
+
+LangChain / LlamaIndex: `@kev-ai/sdk/langchain` · `@kev-ai/sdk/llamaindex`  
+PyPI coming later.
 
 ---
 
