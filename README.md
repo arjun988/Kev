@@ -1,7 +1,28 @@
-# Kev
+<p align="center">
+  <img src="https://img.shields.io/badge/license-Apache--2.0-black?style=flat-square" alt="Apache-2.0" />
+  <img src="https://img.shields.io/badge/version-1.0.0-111111?style=flat-square" alt="v1.0.0" />
+  <img src="https://img.shields.io/badge/node-%3E%3D20-222?style=flat-square" alt="Node 20+" />
+  <img src="https://img.shields.io/badge/System%20One-choice%20%7C%20score%20%7C%20noul-0a0a0a?style=flat-square" alt="System One" />
+</p>
 
-**Typed decisions for software.**  
-Send context. Ask `choice`, `score`, or `noul`. Get calibrated probabilities back — not a paragraph to parse.
+<h1 align="center">Kev</h1>
+
+<p align="center">
+  <b>Typed decisions for software.</b><br/>
+  Send context. Ask <code>choice</code>, <code>score</code>, or <code>noul</code>.<br/>
+  Get calibrated probabilities — not a paragraph to parse.
+</p>
+
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#benchmarks">Benchmarks</a> ·
+  <a href="#why-kev">Why Kev</a> ·
+  <a href="#playground">Playground</a> ·
+  <a href="#clients--tools">SDKs</a> ·
+  <a href="MIGRATION.md">Migrate from Jev</a>
+</p>
+
+---
 
 ```bash
 curl -s http://127.0.0.1:3000/v1/systemone \
@@ -39,32 +60,84 @@ curl -s http://127.0.0.1:3000/v1/systemone \
 }
 ```
 
-Then your code does the simple thing:
-
 ```ts
 if (answers.escalate.noul > 0.7) routeToHuman();
 else assign(answers.topic.choice);
 ```
 
-Kev is an open-source **System One** decision engine: Apache-2.0, self-hosted, compatible with the Jev-style wire format. Bring your own model (Ollama, vLLM, OpenAI-compatible) — or start with the built-in mock for offline demos.
+**Kev** is an open-source **System One** decision engine: Apache-2.0, self-hosted, Jev-style wire format. Bring your own model (Ollama, vLLM, OpenAI-compatible) — or start with the built-in mock.
 
 > Independent project. Not affiliated with TypeSafe AI or OpenJev.
 
 ---
 
-## Why Kev
+## What Kev is
 
-| You want… | Chat LLMs give you… | Kev gives you… |
+Kev turns an LLM into a **typed classifier / gate / scorer** your app can trust:
+
+| Primitive | Returns | Use for |
 | --- | --- | --- |
-| A label | Prose you must parse | A typed key + distribution |
-| A gate | “Yes, I think so…” | `noul` ∈ [0, 1] you can threshold |
-| Confidence | Vibes | Concentration of the distribution |
-| Many judgments | N serial prompts | One round trip, questions in parallel |
-| Control | Vendor lock-in | Your GPU / your API key / your laptop |
+| **`choice`** | Winning key + full distribution | Routing, intent, triage (≤255 options; cascade for larger) |
+| **`score`** | Ordinal level + distribution | Urgency, quality, sentiment |
+| **`noul`** | Probability in `[0, 1]` | Escalate? Toxic? Block? Page on-call? |
+
+You do **not** train models. You do **not** parse chat. You threshold numbers.
 
 ---
 
-## Install
+## Why Kev
+
+### vs chat LLMs
+
+| You need | Chat gives you | Kev gives you |
+| --- | --- | --- |
+| A label | Prose you must regex | A typed key + probabilities |
+| A gate | “I think so…” | `noul` you can threshold |
+| Confidence | Vibes | Concentration of the distribution |
+| Many judgments | N serial prompts | One request, questions in parallel |
+| Control | Vendor lock-in | Your GPU / API / laptop |
+
+### What makes us different
+
+| | Hosted Jev / OpenJev | **Kev** |
+| --- | --- | --- |
+| License | Proprietary / mixed | **Apache-2.0** |
+| Deploy | Their cloud / their weights | **Self-host** anywhere |
+| Models | Fixed stack | **BYO** — Ollama, vLLM, OpenAI, Gemini-compat, … |
+| Wire format | System One | **Same shape** (`choice` / `score` / `noul`) |
+| Offline | No | **Mock backend** for CI & demos |
+| DX | API key | Playground · SDK · CLI · MCP · LangChain / LlamaIndex |
+| Training | N/A for you | **None** — inference + API only |
+
+Kev is the open control plane. The intelligence is whatever model you point it at.
+
+---
+
+## Benchmarks
+
+Same **public** held-out suite used around OpenJev: [`s1lv3rj1nx/openjev-heldout`](https://huggingface.co/datasets/s1lv3rj1nx/openjev-heldout).  
+Model: **`qwen3.5:9b`** via Ollama · **100% GPU**.
+
+| Task | Primitive | Kev | Chance | Reference |
+| --- | --- | ---: | ---: | --- |
+| **Banking77** | choice (77) · n=600 | **83%** | 1.3% | Jev ~**82%** held-out · JevBench **80.3%** |
+| **CLINC OOS** | choice (151) · n=600 | **86%** | 0.7% | — |
+| **AG News** | choice (4) · n=600 | **86.5%** | 25.0% | — |
+| **SST-5** | score (5) · n=600 | **89.5%** within-1 | 20.0% | ordinal ±1 |
+| **Civil Comments** | noul · n=600 | **81%** | 50.0% | — |
+
+OpenJev’s private 10k mix (cite only): Jev **85.4%** · OpenJev **84.0%** — questions not fully public, so we don’t invent a fake score against it.
+
+```bash
+pnpm bench:heldout -- --mode api --base-url http://127.0.0.1:3000 \
+  --tasks banking77,clinc_oos,ag_news,sst5,civil_comments_toxicity
+```
+
+Details: [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md) · [`benchmarks/METHODOLOGY.md`](benchmarks/METHODOLOGY.md)
+
+---
+
+## Quick start
 
 **Requirements:** Node 20+, [pnpm](https://pnpm.io) 9.
 
@@ -77,7 +150,27 @@ cp .env.example .env
 pnpm --filter @kev-ai/server start
 ```
 
-Open the playground: [http://127.0.0.1:3000/playground/](http://127.0.0.1:3000/playground/)
+| Open | URL |
+| --- | --- |
+| Playground | [http://127.0.0.1:3000/playground/](http://127.0.0.1:3000/playground/) |
+| Health | [http://127.0.0.1:3000/health](http://127.0.0.1:3000/health) |
+| OpenAPI | [http://127.0.0.1:3000/openapi.json](http://127.0.0.1:3000/openapi.json) |
+
+<details>
+<summary>Use a real local model (Ollama)</summary>
+
+```bash
+ollama pull qwen3.5:9b   # or llama3.2, etc.
+```
+
+```env
+KEV_BACKEND=ollama
+KEV_OLLAMA_MODEL=qwen3.5:9b
+```
+
+Restart the server. Confirm GPU with `ollama ps` → `100% GPU`.
+
+</details>
 
 <details>
 <summary>Windows: <code>corepack enable</code> fails with EPERM?</summary>
@@ -100,7 +193,17 @@ cd python && pip install -e . && cd ..
 
 ---
 
-## 60-second TypeScript
+## Playground
+
+A built-in UI for support routing, moderation, content scoring, vision triage, and intent — with probability bars and raw JSON.
+
+**→ [http://127.0.0.1:3000/playground/](http://127.0.0.1:3000/playground/)**
+
+---
+
+## Use it in code
+
+### TypeScript
 
 ```ts
 import { Choice, KevClient, Noul, Score } from "@kev-ai/sdk";
@@ -125,10 +228,10 @@ const res = await client.systemOne({
   },
 });
 
-console.log(res.answers);
+console.log(res.answers.topic.choice, res.answers.escalate.noul);
 ```
 
-## 60-second Python
+### Python
 
 ```python
 from kev import KevClient, Choice, Noul
@@ -144,145 +247,120 @@ res = client.system_one(
 print(res.answers["topic"].choice, res.answers["escalate"].noul)
 ```
 
+### CLI
+
+```bash
+pnpm --filter @kev-ai/cli exec kev demo
+pnpm --filter @kev-ai/cli exec kev ask --help
+pnpm --filter @kev-ai/cli exec kev eval stability --trials 20
+```
+
 ---
 
 ## How it works
 
 ```text
-┌────────────┐     POST /v1/systemone      ┌──────────────┐
-│  Your app  │  ─────────────────────────► │  Kev server  │
-│  SDK / CLI │  state + questions          │  validate    │
-└────────────┘  ◄───────────────────────── │  decide      │
-                   typed answers + probs   └──────┬───────┘
-                                                  │
-                         ┌────────────────────────┼────────────────────────┐
-                         ▼                        ▼                        ▼
-                   logprob readout          constrained JSON         parallel micro-score
-                   (when available)         (JSON mode)              (fallback)
-                         └────────────────────────┬────────────────────────┘
-                                                  ▼
-                                        Ollama · vLLM · OpenAI-compatible · mock
+Your app  ──POST /v1/systemone──►  Kev server
+   ▲         state + questions         │
+   │                                   ├─ validate (schema)
+   │                                   ├─ decide (strategy)
+   └──── typed answers + probs ────────┘
+                                         │
+              ┌──────────────────────────┼──────────────────────────┐
+              ▼                          ▼                          ▼
+        logprob readout           constrained JSON          parallel micro-score
+        (when available)          (JSON mode)               (fallback)
+              └──────────────────────────┬──────────────────────────┘
+                                         ▼
+                           Ollama · vLLM · OpenAI-compatible · mock
 ```
 
-**Strategies** (`KEV_STRATEGY=auto` by default):
-
-1. **Readout** — map options to letters, read first-token logprobs, calibrate with softmax  
-2. **Constrained** — force a valid JSON choice  
-3. **Parallel** — score each option with a tiny `{ "p": 0..1 }` call, then normalize  
+`KEV_STRATEGY=auto` picks the best path for your backend. Large choice sets cascade when needed. Optional: batch API, cache, rate limits, audit, traces.
 
 ---
 
 ## Features
 
-- **System One primitives** — `choice` (≤255), `score` (2–10 levels), `noul` (yes probability)
-- **Batch API** — `POST /v1/systemone/batch`
-- **Self-host DX** — Docker, playground UI, OpenAPI at `/openapi.json`
-- **Production knobs** — optional API keys, rate limits, LRU cache, audit log, OTel-style spans
-- **Agent-ready** — MCP server, LangChain / LlamaIndex adapters, screenshot `images[]` in state
-- **Scale taxonomies** — `cascadeChoice()` for &gt;255 options
-- **Measure it** — eval harness, option-order stability, published benchmark fixture
+- **System One primitives** — `choice` · `score` · `noul` with calibrated distributions  
+- **Self-host first** — Docker-friendly, playground, OpenAPI  
+- **BYO model** — mock · Ollama · any OpenAI-compatible endpoint  
+- **Production knobs** — API keys, rate limits, LRU cache, audit log, OTel-style spans  
+- **Agent-ready** — MCP server, LangChain / LlamaIndex adapters, `images[]` in state  
+- **Scale** — `cascadeChoice()` for big taxonomies  
+- **Honest eval** — held-out suite runner, stability tests, published fixtures  
 
 ---
 
 ## Backends
 
-| `KEV_BACKEND` | Use when |
+| `KEV_BACKEND` | When |
 | --- | --- |
-| `mock` | Offline demos & CI (default) |
-| `ollama` | Local models (`ollama pull llama3.2`) |
-| `openai` | OpenAI, vLLM, Groq, Together, MLX servers, … |
-
-Model recipes: [`models/cards/`](models/cards/README.md)
+| `mock` | Offline demos & CI |
+| `ollama` | Local GPU/CPU models |
+| `openai` | OpenAI, vLLM, Groq, Together, Gemini OpenAI-compat, MLX, … |
 
 ```env
 KEV_BACKEND=ollama
-KEV_OLLAMA_MODEL=llama3.2
+KEV_OLLAMA_MODEL=qwen3.5:9b
 ```
+
+Model recipes: [`models/cards/`](models/cards/README.md)
 
 ---
 
 ## Clients & tools
 
-| Thing | Package / path |
+| | |
 | --- | --- |
 | HTTP API | `@kev-ai/server` |
-| TypeScript SDK | `@kev-ai/sdk` |
-| CLI | `@kev-ai/cli` → `kev ask` · `kev demo` · `kev eval` |
+| TypeScript | `@kev-ai/sdk` |
+| CLI | `@kev-ai/cli` |
 | Python | `python/kev` |
 | MCP | `@kev-ai/mcp` |
 | Adapters | `@kev-ai/adapters` |
 | Recipes | [`awesome-kev/`](awesome-kev/README.md) |
 | Snippets | [`.vscode/kev.code-snippets`](.vscode/kev.code-snippets) |
 
-```bash
-pnpm --filter @kev-ai/cli exec kev demo
-pnpm --filter @kev-ai/cli exec kev eval stability --trials 20
-```
-
----
-
-## Benchmarks
-
-We use the **same public held-out suite** OpenJev ships for generalization checks: [`s1lv3rj1nx/openjev-heldout`](https://huggingface.co/datasets/s1lv3rj1nx/openjev-heldout). Their private 10k mix is not fully downloadable — we cite those numbers, we don’t invent ours against it.
-
-### Accuracy (same suite)
-
-| Task | Kev + qwen3.5:9b (Ollama GPU) | Chance | Published reference |
-| --- | ---: | ---: | --- |
-| **Banking77** · n=600 | **83%** (498/600) | 1.3% | Jev ~**82%** held-out · JevBench **80.3%** |
-| **CLINC OOS** · n=600 | **86%** (516/600) | 0.7% | — |
-| **AG News** · n=600 | **86.5%** (519/600) | 25.0% | — |
-| **SST-5** · n=600 | **89.5%** within-1 (537/600) | 20.0% | ordinal ±1 |
-| **Civil Comments toxicity** · n=600 | **81%** (486/600) | 50.0% | — |
-
-OpenJev private 10k (cite only): Jev **85.4%** · OpenJev **84.0%**.
-
-```bash
-pnpm bench:heldout -- --mode api --base-url http://127.0.0.1:3000 --tasks banking77,clinc_oos,ag_news,sst5,civil_comments_toxicity
-```
-
-- Full table + citations: [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md)
-- Methodology: [`benchmarks/METHODOLOGY.md`](benchmarks/METHODOLOGY.md)
-- Suite notes: [`benchmarks/suites/openjev-heldout/README.md`](benchmarks/suites/openjev-heldout/README.md)
-
 ---
 
 ## Migrating from Jev
 
-Change the base URL. Re-tune thresholds on your labels.
-
-Full guide: [`MIGRATION.md`](MIGRATION.md)
+Point the base URL at Kev. Re-tune thresholds on **your** labels.
 
 ```bash
-export TYPESAFE_BASE_URL=http://127.0.0.1:3000   # TypeSafe SDKs
+export TYPESAFE_BASE_URL=http://127.0.0.1:3000
 # or
 export KEV_BASE_URL=http://127.0.0.1:3000
 ```
+
+Full guide: [`MIGRATION.md`](MIGRATION.md)
 
 ---
 
 ## Project layout
 
 ```text
-apps/server       Decision API
-apps/playground   Local UI
-apps/mcp          MCP server
-packages/*        schema · core · backends · sdk · cli · eval · adapters
-python/kev        Python client
-benchmarks/       Frozen fixtures + runner
-awesome-kev/      Curated recipes
-models/           Calibration profiles · model cards · dataset schema
+apps/server        Decision API + playground host
+apps/playground    Local workbench UI
+apps/mcp           MCP server
+packages/*         schema · core · backends · sdk · cli · eval · adapters
+python/kev         Python client
+benchmarks/        Held-out suite + fixtures
+awesome-kev/       Recipes
+models/            Model cards · calibration · dataset notes
 ```
 
 ---
 
 ## Versioning
 
-**Kev 1.0** freezes the System One HTTP shape in `GET /openapi.json`.
+**Kev 1.0** freezes the System One HTTP contract in `GET /openapi.json`.
 
-- **MAJOR** — breaking wire changes  
-- **MINOR** — additive endpoints / fields  
-- **PATCH** — fixes and docs  
+| | |
+| --- | --- |
+| **MAJOR** | Breaking wire changes |
+| **MINOR** | Additive endpoints / fields |
+| **PATCH** | Fixes and docs |
 
 See [`CHANGELOG.md`](CHANGELOG.md).
 

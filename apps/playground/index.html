@@ -7,76 +7,189 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="atmosphere" aria-hidden="true"></div>
-    <header class="hero">
+    <div class="atmosphere" aria-hidden="true">
+      <div class="noise"></div>
+      <div class="rule-h"></div>
+      <div class="rule-v"></div>
+    </div>
+
+    <header class="topbar">
+      <a class="logo" href="#top">Kev</a>
+      <nav class="topnav" aria-label="Primary">
+        <a href="#workbench">Workbench</a>
+        <a href="/openapi.json" target="_blank" rel="noreferrer">OpenAPI</a>
+        <a href="https://github.com/arjun988/Kev" target="_blank" rel="noreferrer"
+          >GitHub</a
+        >
+      </nav>
+    </header>
+
+    <section id="top" class="hero">
+      <p class="eyebrow">System One playground</p>
       <p class="brand">Kev</p>
-      <h1 class="headline">Ask for a decision, not a paragraph.</h1>
+      <h1 class="headline">Decisions with probabilities. Not prose.</h1>
       <p class="lede">
-        Typed System One answers — choice, score, or noul — with calibrated
-        probabilities you can threshold in code.
+        Route tickets, gate toxicity, score drafts, and judge screenshots —
+        all as typed <em>choice</em>, <em>score</em>, and <em>noul</em> answers.
       </p>
       <div class="cta-row">
         <a class="btn primary" href="#workbench">Open workbench</a>
-        <a class="btn ghost" href="/openapi.json" target="_blank" rel="noreferrer"
-          >API shape</a
-        >
+        <button type="button" class="btn ghost" id="btnExample">
+          Jump to support sample
+        </button>
       </div>
-    </header>
+      <p class="hint">
+        Local server · <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd> evaluates
+      </p>
+    </section>
 
     <main id="workbench" class="workbench">
-      <h2>Workbench</h2>
-      <p class="support">
-        Runs against this server’s <code>POST /v1/systemone</code>. Mock backend
-        works offline.
-      </p>
+      <div class="workbench-head">
+        <div>
+          <p class="section-kicker">Interactive</p>
+          <h2>Workbench</h2>
+          <p class="support">
+            Pick a topic, edit state, evaluate via <code>POST /v1/systemone</code>.
+          </p>
+        </div>
+      </div>
 
-      <form id="form" class="form">
-        <label>
-          State
-          <textarea id="state" rows="5" required>
-Customer: I was charged twice for my order and nobody has replied. I am furious.</textarea
-          >
-        </label>
+      <div class="topic-rail" role="tablist" aria-label="Topics">
+        <button type="button" class="topic active" data-topic="support" role="tab">
+          <span class="topic-name">Support</span>
+          <span class="topic-desc">Route + escalate</span>
+        </button>
+        <button type="button" class="topic" data-topic="moderation" role="tab">
+          <span class="topic-name">Moderation</span>
+          <span class="topic-desc">Toxicity gate</span>
+        </button>
+        <button type="button" class="topic" data-topic="content" role="tab">
+          <span class="topic-name">Content</span>
+          <span class="topic-desc">Draft quality score</span>
+        </button>
+        <button type="button" class="topic" data-topic="vision" role="tab">
+          <span class="topic-name">Vision</span>
+          <span class="topic-desc">Screenshot triage</span>
+        </button>
+        <button type="button" class="topic" data-topic="intent" role="tab">
+          <span class="topic-name">Intent</span>
+          <span class="topic-desc">Assistant routing</span>
+        </button>
+      </div>
 
-        <div class="row">
-          <label>
-            Choice instructions
-            <input id="choiceInstr" value="Which team should handle this?" />
-          </label>
-          <label>
-            Choice criteria (JSON object)
-            <textarea id="choiceCriteria" rows="4">
-{
-  "billing": "charges, refunds, payments",
-  "shipping": "delivery and tracking",
-  "technical": "bugs and outages"
-}</textarea
+      <div class="split">
+        <form id="form" class="panel form" autocomplete="off">
+          <div class="panel-label">Input</div>
+
+          <label class="field" id="imageField" hidden>
+            <span class="field-label">Image URL</span>
+            <input
+              id="imageUrl"
+              type="url"
+              placeholder="https://…/screenshot.png"
+            />
+            <span class="field-hint"
+              >Attached as <code>state.images[]</code> for multimodal backends.</span
             >
           </label>
-        </div>
 
-        <div class="row">
-          <label>
-            Noul instructions
-            <input id="noulInstr" value="Escalate to a human agent now?" />
+          <label class="field">
+            <span class="field-label" id="stateLabel">State</span>
+            <textarea id="state" rows="7" required></textarea>
           </label>
-          <label class="check">
-            <input type="checkbox" id="trace" checked />
-            Include trace
-          </label>
-        </div>
 
-        <button type="submit" class="btn primary">Evaluate</button>
-      </form>
+          <div id="choiceBlock" class="block">
+            <label class="field">
+              <span class="field-label">Choice instructions</span>
+              <input id="choiceInstr" />
+            </label>
+            <label class="field">
+              <span class="field-label">Criteria (JSON)</span>
+              <textarea id="choiceCriteria" rows="8" spellcheck="false"></textarea>
+            </label>
+          </div>
 
-      <pre id="out" class="out" aria-live="polite">Results appear here.</pre>
+          <div id="scoreBlock" class="block" hidden>
+            <label class="field">
+              <span class="field-label">Score instructions</span>
+              <input id="scoreInstr" />
+            </label>
+            <label class="field">
+              <span class="field-label">Levels (JSON array)</span>
+              <textarea id="scoreCriteria" rows="7" spellcheck="false"></textarea>
+            </label>
+          </div>
+
+          <div id="noulBlock" class="block">
+            <label class="field">
+              <span class="field-label">Noul gate</span>
+              <input id="noulInstr" />
+            </label>
+          </div>
+
+          <div class="form-footer">
+            <label class="switch">
+              <input type="checkbox" id="trace" checked />
+              <span>Trace</span>
+            </label>
+            <button type="submit" class="btn primary" id="submitBtn">
+              <span class="btn-label">Evaluate</span>
+              <span class="btn-spinner" aria-hidden="true"></span>
+            </button>
+          </div>
+          <p id="formError" class="form-error" hidden></p>
+        </form>
+
+        <section class="panel results" aria-live="polite">
+          <div class="panel-label">Output</div>
+          <div class="results-head">
+            <h3 id="topicTitle">Support routing</h3>
+            <div class="tabs" role="tablist">
+              <button
+                type="button"
+                class="tab active"
+                data-view="viz"
+                role="tab"
+                aria-selected="true"
+              >
+                Summary
+              </button>
+              <button
+                type="button"
+                class="tab"
+                data-view="raw"
+                role="tab"
+                aria-selected="false"
+              >
+                JSON
+              </button>
+            </div>
+          </div>
+
+          <div id="viz" class="viz">
+            <div class="empty">
+              <p class="empty-title">Waiting</p>
+              <p class="empty-body">
+                Choose a topic, tweak the state, then evaluate for typed
+                probabilities.
+              </p>
+            </div>
+          </div>
+          <pre id="out" class="out" hidden></pre>
+        </section>
+      </div>
     </main>
+
+    <footer class="footer">
+      <span>Apache-2.0 · self-hosted</span>
+      <span id="healthLine">Checking server…</span>
+    </footer>
 
     <script src="./app.js" type="module"></script>
   </body>
