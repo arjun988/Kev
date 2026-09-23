@@ -20,6 +20,8 @@ Internal (`schema`, `core`, `backends`, `eval`, `adapters`, `mcp`) stay **privat
 
 ## Publish npm (order matters)
 
+Working tree can be dirty — scripts use `--no-git-checks`. Prefer committing the publish prep first when you can.
+
 ```bash
 cd Kev
 pnpm install

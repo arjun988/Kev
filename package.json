@@ -16,9 +16,9 @@
     "bench": "tsx benchmarks/run.ts",
     "bench:heldout": "tsx benchmarks/suites/openjev-heldout/run.ts",
     "clean": "turbo run clean && node -e \"require('fs').rmSync('node_modules',{recursive:true,force:true})\"",
-    "publish:sdk": "pnpm --filter @kev-ai/sdk publish --access public",
-    "publish:server": "pnpm --filter @kev-ai/server publish --access public",
-    "publish:cli": "pnpm --filter @kev-ai/cli publish --access public",
+    "publish:sdk": "pnpm --filter @kev-ai/sdk publish --access public --no-git-checks",
+    "publish:server": "pnpm --filter @kev-ai/server publish --access public --no-git-checks",
+    "publish:cli": "pnpm --filter @kev-ai/cli publish --access public --no-git-checks",
     "publish:npm": "pnpm build && pnpm publish:sdk && pnpm publish:server && pnpm publish:cli"
   },
   "devDependencies": {
