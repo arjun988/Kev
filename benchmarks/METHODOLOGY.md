@@ -7,6 +7,7 @@
 3. **Pinned versions.** Record Kev commit, backend (`mock` / Ollama model tag / OpenAI model id), and the other system’s model id or weight hash.
 4. **Separate accuracy from latency.** A faster wrong answer is still wrong.
 5. **Say what you measured.** Mock heuristics are useful for CI; they are not model quality.
+6. **Split format failure from decision error.** A parseable wrong answer is not a “hallucination” of structure.
 
 ## Baselines we care about
 
@@ -30,13 +31,35 @@ This is the public held-out set used around OpenJev (Banking77, CLINC, MASSIVE, 
 pnpm bench:heldout
 ```
 
-## Scoring
+Held-out reports now include per-task **p50 / p95 latency**, **parse_fail_rate** (format hallucination), and **strategy_counts** (`readout` / `constrained` / `parallel` / `mock`).
+
+## Ops suite (latency, agreement, multi-Q)
+
+Answers the production questions: how fast, how often is output unusable, how stable are probs, how many questions per request.
+
+```bash
+pnpm bench:ops                          # mock (CI)
+pnpm bench:ops -- --mode api --base-url http://127.0.0.1:3000
+pnpm bench:agreement
+pnpm bench:multiq
+```
+
+| Metric | Definition |
+| --- | --- |
+| **p50 / p95 / p99** | Percentiles of `usage.latency_ms` (falls back to wall clock) |
+| **parse_fail_rate** / **format_hallucination_rate** | Missing answer, type mismatch, invented choice label, bad noul, or request error — **first shot**, no retries |
+| **probabilistic agreement** | Same request × N trials: argmax flip rate + mean KL(trial ‖ mean distribution) + max-prob delta |
+| **option-order stability** | Shuffle criteria order (`kev eval stability`); target flip &lt; 5% |
+| **multi-question scaling** | 1 / 5 / 10 / 15 questions sharing one `state`: latency ratio vs 1-Q + mean confidence ratio |
+
+## Scoring (accuracy)
 
 For each example with `expected.choice`, the top choice key must match.  
 For `expected.score`, argmax of the score distribution must match the integer label.  
 For `expected.noul` / boolean toxicity labels, treat `noul ≥ 0.5` as positive unless a range is given.
 
-Accuracy = `#correct / #examples with expectations`.
+Accuracy = `#correct / #examples with expectations`.  
+Parse fails are counted separately and **do not** inflate accuracy (they are neither correct nor scored as label errors when structure is invalid).
 
 ## Stability (optional companion)
 
@@ -50,9 +73,14 @@ Include at least:
 date: ISO-8601
 kev_commit: <sha>
 backend: mock | ollama/<tag> | openai/<model>
-fixture: benchmarks/fixtures/routing-bench.json
+fixture: benchmarks/fixtures/routing-bench.json | openjev-heldout/<task>
 accuracy: 0.xx (N/N)
-latency_ms_mean: …
+parse_fail_rate: 0.xx
+latency_ms_p50: …
+latency_ms_p95: …
+strategy_counts: { readout: … }
 hardware: …
 notes: …
 ```
+
+Artifacts: `benchmarks/out/ops-latest.{json,md}` · `benchmarks/out/openjev-heldout-latest.{json,md}`

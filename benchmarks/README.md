@@ -18,8 +18,17 @@ We re-run the **public held-out suite** so anyone can reproduce. We cite the 10k
 # CI smoke (8 examples)
 pnpm bench
 
-# Same suite OpenJev uses for held-out generalization
-pnpm exec tsx benchmarks/suites/openjev-heldout/run.ts
+# Ops: p50/p95, parse-fail, agreement, multi-Q scaling
+pnpm bench:ops
+pnpm bench:ops -- --mode api --base-url http://127.0.0.1:3000
+
+# Held-out accuracy (+ latency / parse-fail per task)
+pnpm bench:heldout
+pnpm bench:heldout -- --mode api --base-url http://127.0.0.1:3000 --tasks banking77
+
+# Individual suites
+pnpm bench:agreement
+pnpm bench:multiq
 ```
 
 Details: [`suites/openjev-heldout/README.md`](./suites/openjev-heldout/README.md) · methodology: [`METHODOLOGY.md`](./METHODOLOGY.md) · numbers: [`RESULTS.md`](./RESULTS.md)

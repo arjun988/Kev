@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 import { Choice, KevClient, KevError, Noul, Score } from "@kev-ai/sdk";
-import { runDataset, runStabilitySuite } from "@kev-ai/eval";
+import {
+  runAgreementSuite,
+  runDataset,
+  runMultiQSuite,
+  runStabilitySuite,
+} from "@kev-ai/eval";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,6 +20,7 @@ type Args = {
   dataset?: string;
   mode?: string;
   trials?: number;
+  multiTrials?: number;
   trace?: boolean;
   help?: boolean;
 };
@@ -33,6 +39,7 @@ function parseArgs(argv: string[]): Args {
     else if (a === "--dataset" || a === "-d") out.dataset = argv[++i];
     else if (a === "--mode") out.mode = argv[++i];
     else if (a === "--trials") out.trials = Number(argv[++i]);
+    else if (a === "--multi-trials") out.multiTrials = Number(argv[++i]);
     else out._.push(a);
   }
   return out;
@@ -48,6 +55,8 @@ Usage:
   kev demo
   kev eval dataset [--dataset path] [--mode mock|api]
   kev eval stability [--trials N]
+  kev eval agreement [--trials N] [--mode mock|api]
+  kev eval multiq [--multi-trials N] [--mode mock|api]
   kev-mcp            MCP stdio server (separate bin)
 
 Environment:
@@ -145,6 +154,28 @@ async function cmdEval(args: Args): Promise<void> {
     const report = await runStabilitySuite(args.trials ?? 20);
     console.log(JSON.stringify(report, null, 2));
     if (report.mockHeuristic.flipRate > 0.05) process.exitCode = 1;
+    return;
+  }
+  if (sub === "agreement") {
+    const report = await runAgreementSuite({
+      trials: args.trials ?? 20,
+      mode: args.mode === "api" ? "api" : "mock",
+      baseUrl: args.baseUrl,
+    });
+    console.log(JSON.stringify(report, null, 2));
+    if (report.parse_fail_rate > 0 || report.mean_flip_rate > 0.05) {
+      process.exitCode = 1;
+    }
+    return;
+  }
+  if (sub === "multiq") {
+    const report = await runMultiQSuite({
+      mode: args.mode === "api" ? "api" : "mock",
+      baseUrl: args.baseUrl,
+      trialsPerCount: args.multiTrials ?? args.trials ?? 5,
+    });
+    console.log(JSON.stringify(report, null, 2));
+    if (report.points.some((p) => p.parse_fail_rate > 0)) process.exitCode = 1;
     return;
   }
   if (sub === "dataset" || !sub) {

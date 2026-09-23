@@ -9,10 +9,17 @@
  *   pnpm exec tsx benchmarks/suites/openjev-heldout/run.ts --tasks banking77,ag_news
  *   pnpm exec tsx benchmarks/suites/openjev-heldout/run.ts --mode api --base-url http://127.0.0.1:3000
  */
-import { createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { evaluateWithMock } from "../../../packages/backends/dist/index.js";
+import {
+  bumpStrategy,
+  round4,
+  summarizeLatencies,
+  type LatencySummary,
+  type StrategyCounts,
+} from "../../../packages/eval/dist/metrics.js";
 import { KevClient } from "../../../packages/sdk-ts/dist/index.js";
 import type { Question, SystemOneResponse } from "../../../packages/schema/dist/index.js";
 
@@ -51,6 +58,13 @@ type TaskReport = {
   correct_within1?: number;
   chance: number;
   lift_over_chance: number;
+  /** First-shot structure failures (missing answer, invented label, request error) */
+  parse_fails: number;
+  parse_fail_rate: number;
+  /** Format hallucination rate ≡ parse_fail_rate for System One */
+  format_hallucination_rate: number;
+  latency: LatencySummary;
+  strategy_counts: StrategyCounts;
   failures_sample: Array<{ state: string; expected: unknown; got: unknown }>;
 };
 
@@ -157,6 +171,41 @@ function scoreRow(
   return { exact, within1, detail };
 }
 
+/** Structure / format validity — independent of label correctness. */
+function checkParseable(
+  questions: Record<string, Question>,
+  response: SystemOneResponse,
+): { ok: boolean; reason?: string } {
+  for (const [name, q] of Object.entries(questions)) {
+    const ans = response.answers[name];
+    if (!ans) return { ok: false, reason: `missing:${name}` };
+    if (ans.type !== q.type) return { ok: false, reason: `type_mismatch:${name}` };
+    if (ans.type === "choice" && q.type === "choice") {
+      if (!(ans.choice in q.criteria)) {
+        return { ok: false, reason: `invented_choice:${name}:${ans.choice}` };
+      }
+      for (const k of Object.keys(q.criteria)) {
+        if (typeof ans.probabilities[k] !== "number") {
+          return { ok: false, reason: `missing_prob:${name}:${k}` };
+        }
+      }
+    }
+    if (ans.type === "score" && q.type === "score") {
+      for (let i = 0; i < q.criteria.length; i++) {
+        if (typeof ans.probabilities[String(i)] !== "number") {
+          return { ok: false, reason: `missing_score_prob:${name}:${i}` };
+        }
+      }
+    }
+    if (ans.type === "noul") {
+      if (!Number.isFinite(ans.noul) || ans.noul < 0 || ans.noul > 1) {
+        return { ok: false, reason: `bad_noul:${name}` };
+      }
+    }
+  }
+  return { ok: true };
+}
+
 function chanceRate(questions: Record<string, Question>): number {
   const q = Object.values(questions)[0];
   if (!q) return 0;
@@ -191,12 +240,13 @@ async function evaluateOne(
 ): Promise<SystemOneResponse> {
   if (args.mode === "api") {
     const client = new KevClient({ baseUrl: args.baseUrl });
-    return client.systemOne({ state, questions });
+    return client.systemOne({ state, questions, trace: true });
   }
   return evaluateWithMock({
     model: "kev-mock",
     state,
     questions,
+    trace: true,
   });
 }
 
@@ -213,19 +263,61 @@ async function runTask(taskName: string, args: Args): Promise<TaskReport> {
 
   let correct = 0;
   let correctWithin1 = 0;
+  let parseFails = 0;
+  const wallMs: number[] = [];
+  const serverMs: number[] = [];
+  const strategy_counts: StrategyCounts = {};
   const failures_sample: TaskReport["failures_sample"] = [];
 
   for (const row of rows) {
-    const response = await evaluateOne(args, row.state, questions);
-    const scored = scoreRow(questions, row.answers, response);
-    if (scored.exact) correct += 1;
-    if (scored.within1) correctWithin1 += 1;
-    if (!scored.exact && failures_sample.length < 5 && scored.detail) {
-      failures_sample.push({
-        state: row.state.slice(0, 120),
-        expected: scored.detail.expected,
-        got: scored.detail.got,
-      });
+    const started = Date.now();
+    try {
+      const response = await evaluateOne(args, row.state, questions);
+      wallMs.push(Date.now() - started);
+      if (typeof response.usage.latency_ms === "number") {
+        serverMs.push(response.usage.latency_ms);
+      }
+
+      const parsed = checkParseable(questions, response);
+      if (!parsed.ok) {
+        parseFails += 1;
+        if (failures_sample.length < 5) {
+          failures_sample.push({
+            state: row.state.slice(0, 120),
+            expected: row.answers,
+            got: parsed.reason ?? "parse_fail",
+          });
+        }
+      } else {
+        const scored = scoreRow(questions, row.answers, response);
+        if (scored.exact) correct += 1;
+        if (scored.within1) correctWithin1 += 1;
+        if (!scored.exact && failures_sample.length < 5 && scored.detail) {
+          failures_sample.push({
+            state: row.state.slice(0, 120),
+            expected: scored.detail.expected,
+            got: scored.detail.got,
+          });
+        }
+      }
+
+      if (response.trace) {
+        for (const tr of Object.values(response.trace)) {
+          bumpStrategy(strategy_counts, tr.strategy);
+        }
+      } else {
+        bumpStrategy(strategy_counts, args.mode === "mock" ? "mock" : "unknown");
+      }
+    } catch (err) {
+      wallMs.push(Date.now() - started);
+      parseFails += 1;
+      if (failures_sample.length < 5) {
+        failures_sample.push({
+          state: row.state.slice(0, 120),
+          expected: row.answers,
+          got: err instanceof Error ? err.message : "request_error",
+        });
+      }
     }
   }
 
@@ -235,12 +327,13 @@ async function runTask(taskName: string, args: Args): Promise<TaskReport> {
   const q0 = Object.values(questions)[0]!;
   const isScore = q0.type === "score";
   const within1Acc = n ? correctWithin1 / n : 0;
+  const parse_fail_rate = n ? round4(parseFails / n) : 0;
+  const latencySamples = serverMs.length ? serverMs : wallMs;
 
   return {
     task: taskName,
     primitive: q0.type,
     n,
-    // Primary accuracy stays exact-match (comparable to choice tasks / OpenJev-style).
     correct,
     accuracy,
     ...(isScore
@@ -252,6 +345,11 @@ async function runTask(taskName: string, args: Args): Promise<TaskReport> {
       : {}),
     chance,
     lift_over_chance: accuracy - chance,
+    parse_fails: parseFails,
+    parse_fail_rate,
+    format_hallucination_rate: parse_fail_rate,
+    latency: summarizeLatencies(latencySamples),
+    strategy_counts,
     failures_sample,
   };
 }
@@ -285,6 +383,21 @@ async function main(): Promise<void> {
 
   const totalCorrect = reports.reduce((a, r) => a + r.correct, 0);
   const totalN = reports.reduce((a, r) => a + r.n, 0);
+  const totalParseFails = reports.reduce((a, r) => a + r.parse_fails, 0);
+  const allLatencies = reports.flatMap((r) => {
+    // Reconstruct approximate samples is hard; combine per-task summaries via weighted mean of p50/p95 later
+    return [] as number[];
+  });
+  void allLatencies;
+
+  // Aggregate latency: recompute from per-task means is lossy — publish per-task + micro parse rate
+  const strategy_counts: StrategyCounts = {};
+  for (const r of reports) {
+    for (const [k, v] of Object.entries(r.strategy_counts)) {
+      strategy_counts[k] = (strategy_counts[k] ?? 0) + v;
+    }
+  }
+
   const payload = {
     suite: "openjev-heldout-v1",
     source: "https://huggingface.co/datasets/s1lv3rj1nx/openjev-heldout",
@@ -295,6 +408,10 @@ async function main(): Promise<void> {
     micro_accuracy: totalN ? totalCorrect / totalN : 0,
     total_correct: totalCorrect,
     total_n: totalN,
+    parse_fails: totalParseFails,
+    parse_fail_rate: totalN ? round4(totalParseFails / totalN) : 0,
+    format_hallucination_rate: totalN ? round4(totalParseFails / totalN) : 0,
+    strategy_counts,
     tasks: reports,
     reference_published: {
       note: "Published by others on related splits — not our run. Cited for context.",
@@ -320,22 +437,23 @@ async function main(): Promise<void> {
     `${JSON.stringify(payload, null, 2)}\n`,
   );
 
-  // Markdown summary for README pasting
   const md = [
     `# OpenJev held-out results (Kev)`,
     ``,
     `Suite: [s1lv3rj1nx/openjev-heldout](https://huggingface.co/datasets/s1lv3rj1nx/openjev-heldout)`,
     `Mode: **${args.mode}** · date: ${payload.date}`,
+    `Parse-fail / format-hallucination: **${(payload.parse_fail_rate * 100).toFixed(2)}%** (${totalParseFails}/${totalN})`,
+    `Strategies: \`${JSON.stringify(strategy_counts)}\``,
     ``,
-    `| Task | Primitive | n | Exact | Within-1 | Chance |`,
-    `| --- | --- | ---: | ---: | ---: | ---: |`,
+    `| Task | Primitive | n | Exact | Within-1 | Parse-fail | p50 ms | p95 ms | Chance |`,
+    `| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |`,
     ...reports.map((r) => {
       const exact = `${(r.accuracy * 100).toFixed(1)}%`;
       const w1 =
         r.accuracy_within1 != null
           ? `${(r.accuracy_within1 * 100).toFixed(1)}%`
           : "—";
-      return `| ${r.task} | ${r.primitive} | ${r.n} | ${exact} | ${w1} | ${(r.chance * 100).toFixed(1)}% |`;
+      return `| ${r.task} | ${r.primitive} | ${r.n} | ${exact} | ${w1} | ${(r.parse_fail_rate * 100).toFixed(2)}% | ${r.latency.p50_ms} | ${r.latency.p95_ms} | ${(r.chance * 100).toFixed(1)}% |`;
     }),
     ``,
     `**Micro-average:** ${(payload.micro_accuracy * 100).toFixed(1)}% (${totalCorrect}/${totalN})`,

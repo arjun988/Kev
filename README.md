@@ -171,9 +171,26 @@ Model: **`qwen3.5:9b`** via Ollama · **100% GPU**.
 
 OpenJev’s private 10k mix (cite only): Jev **85.4%** · OpenJev **84.0%** — questions not fully public, so we don’t invent a fake score against it.
 
+### Ops metrics (speed · structure · stability · batching)
+
+Kev’s preferred path is **letter-token readout** when the backend exposes logprobs; on Ollama that falls back to **constrained** decode (still first-shot, no JSON retries). Measured on **`qwen3.5:9b` · 100% GPU**:
+
+| Metric | `qwen3.5:9b` (warm GPU) |
+| --- | ---: |
+| **p50 / p95** (2 questions) | **504 / 803 ms** |
+| **Parse-fail / format hallucination** | **0%** |
+| **Rerun agreement flip / KL** | **0% / 0** |
+| **Multi-Q @15 parse-fail** | **0%** |
+| **Multi-Q @1 → @15 p50** | **443 → 8011 ms** (~linear) |
+| **Confidence @15 vs @1** | **~1.17×** (no drop) |
+
 ```bash
+# Accuracy (held-out)
 pnpm bench:heldout -- --mode api --base-url http://127.0.0.1:3000 \
   --tasks banking77,clinc_oos,ag_news,sst5,civil_comments_toxicity
+
+# Speed + agreement + multi-Q
+pnpm bench:ops -- --mode api --base-url http://127.0.0.1:3000 --trials 10
 ```
 
 Details: [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md) · [`benchmarks/METHODOLOGY.md`](benchmarks/METHODOLOGY.md)
@@ -333,6 +350,9 @@ From a clone (without global install):
 ```bash
 pnpm --filter @kev-ai/cli exec kev demo
 pnpm --filter @kev-ai/cli exec kev eval stability --trials 20
+pnpm --filter @kev-ai/cli exec kev eval agreement --trials 20
+pnpm --filter @kev-ai/cli exec kev eval multiq --multi-trials 5
+pnpm bench:ops
 ```
 
 ---
@@ -367,7 +387,7 @@ Your app  ──POST /v1/systemone──►  Kev server
 - **Production knobs** — API keys, rate limits, LRU cache, audit log, OTel-style spans  
 - **Agent-ready** — MCP server, LangChain / LlamaIndex adapters, `images[]` in state  
 - **Scale** — `cascadeChoice()` for big taxonomies  
-- **Honest eval** — held-out suite runner, stability tests, published fixtures  
+- **Honest eval** — held-out suite, ops latency/agreement/multi-Q, stability tests, published fixtures  
 
 ---
 
