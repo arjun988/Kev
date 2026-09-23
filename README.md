@@ -5,7 +5,7 @@
   <img src="https://img.shields.io/badge/System%20One-choice%20%7C%20score%20%7C%20noul-0a0a0a?style=flat-square" alt="System One" />
 </p>
 
-<h1 align="center">Kev</h1>
+<h1 align="center">NotJev : Kev</h1>
 
 <p align="center">
   <b>Typed decisions for software.</b><br/>
@@ -14,9 +14,10 @@
 </p>
 
 <p align="center">
+  <a href="#docs--website">Docs site</a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="#benchmarks">Benchmarks</a> ·
-  <a href="#why-kev">Why Kev</a> ·
+  <a href="#why-notjev--kev">Why Kev</a> ·
   <a href="#playground">Playground</a> ·
   <a href="#clients--tools">SDKs</a> ·
   <a href="MIGRATION.md">Migrate from Jev</a>
@@ -65,15 +66,29 @@ if (answers.escalate.noul > 0.7) routeToHuman();
 else assign(answers.topic.choice);
 ```
 
-**Kev** is an open-source **System One** decision engine: Apache-2.0, self-hosted, Jev-style wire format. Bring your own model (Ollama, vLLM, OpenAI-compatible) — or start with the built-in mock.
+**NotJev : Kev** is an open-source **System One** decision engine: Apache-2.0, self-hosted, Jev-style wire format. Bring your own model (Ollama, vLLM, OpenAI-compatible) — or start with the built-in mock.
 
 > Independent project. Not affiliated with TypeSafe AI or OpenJev.
 
 ---
 
-## What Kev is
+## Docs & website
 
-Kev turns an LLM into a **typed classifier / gate / scorer** your app can trust:
+Product docs, benchmark write-ups, and a fixed **Try it** workbench live in the companion Next.js site (sibling repo / folder **`NotJev-Kev-Website`**):
+
+```bash
+cd ../NotJev-Kev-Website   # or clone your website repo
+npm install && npm run dev
+```
+
+Routes: `/` · `/docs` · `/docs/benchmarks` · `/docs/why` · `/try` (showcase workbench).  
+**GitHub** on that site always points here — engine source stays in this repo.
+
+---
+
+## What NotJev : Kev is
+
+NotJev : Kev turns an LLM into a **typed classifier / gate / scorer** your app can trust:
 
 | Primitive | Returns | Use for |
 | --- | --- | --- |
@@ -85,7 +100,7 @@ You do **not** train models. You do **not** parse chat. You threshold numbers.
 
 ---
 
-## Why Kev
+## Why NotJev : Kev
 
 ### vs chat LLMs
 
@@ -97,9 +112,9 @@ You do **not** train models. You do **not** parse chat. You threshold numbers.
 | Many judgments | N serial prompts | One request, questions in parallel |
 | Control | Vendor lock-in | Your GPU / API / laptop |
 
-### What makes us different
+### What makes NotJev : Kev different
 
-| | Hosted Jev / OpenJev | **Kev** |
+| | Hosted Jev / OpenJev | **NotJev : Kev** |
 | --- | --- | --- |
 | License | Proprietary / mixed | **Apache-2.0** |
 | Deploy | Their cloud / their weights | **Self-host** anywhere |
@@ -109,7 +124,7 @@ You do **not** train models. You do **not** parse chat. You threshold numbers.
 | DX | API key | Playground · SDK · CLI · MCP · LangChain / LlamaIndex |
 | Training | N/A for you | **None** — inference + API only |
 
-Kev is the open control plane. The intelligence is whatever model you point it at.
+NotJev : Kev is the open control plane. The intelligence is whatever model you point it at.
 
 ---
 
@@ -325,7 +340,7 @@ Model recipes: [`models/cards/`](models/cards/README.md)
 
 ## Migrating from Jev
 
-Point the base URL at Kev. Re-tune thresholds on **your** labels.
+Point the base URL at NotJev : Kev. Re-tune thresholds on **your** labels.
 
 ```bash
 export TYPESAFE_BASE_URL=http://127.0.0.1:3000
