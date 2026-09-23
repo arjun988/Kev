@@ -15,10 +15,15 @@
     "test": "turbo run test",
     "bench": "tsx benchmarks/run.ts",
     "bench:heldout": "tsx benchmarks/suites/openjev-heldout/run.ts",
-    "clean": "turbo run clean && node -e \"require('fs').rmSync('node_modules',{recursive:true,force:true})\""
+    "clean": "turbo run clean && node -e \"require('fs').rmSync('node_modules',{recursive:true,force:true})\"",
+    "publish:sdk": "pnpm --filter @kev-ai/sdk publish --access public",
+    "publish:server": "pnpm --filter @kev-ai/server publish --access public",
+    "publish:cli": "pnpm --filter @kev-ai/cli publish --access public",
+    "publish:npm": "pnpm build && pnpm publish:sdk && pnpm publish:server && pnpm publish:cli"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "tsup": "^8.5.1",
     "tsx": "^4.19.2",
     "turbo": "^2.3.3",
     "typescript": "^5.7.2"

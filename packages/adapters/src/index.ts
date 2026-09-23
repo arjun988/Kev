@@ -1,9 +1,9 @@
 export {
   KevClassifier,
   createLangChainKevTool,
-} from "./langchain.js";
+} from "@kev-ai/sdk/langchain";
 
 export {
   KevLlamaTool,
   createLlamaIndexKevTool,
-} from "./llamaindex.js";
+} from "@kev-ai/sdk/llamaindex";

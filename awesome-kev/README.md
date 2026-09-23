@@ -20,10 +20,11 @@ Curated recipes for shipping System One decisions with **Kev**.
 
 ## Integrations
 
-- TypeScript SDK — `@kev-ai/sdk`
-- Python SDK — `pip install -e ./python`
-- MCP — `apps/mcp` (`kev_systemone`)
-- LangChain / LlamaIndex — `@kev-ai/adapters`
+- TypeScript SDK — `npm i @kev-ai/sdk`
+- Python SDK — `pip install kev`
+- Server — `npm i -g @kev-ai/server` (`kev-server`)
+- CLI + MCP — `npm i -g @kev-ai/cli` (`kev` / `kev-mcp`)
+- LangChain / LlamaIndex — `@kev-ai/sdk/langchain` · `@kev-ai/sdk/llamaindex`
 
 ## Contributing a recipe
 

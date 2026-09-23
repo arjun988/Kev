@@ -1,7 +1,7 @@
 {
   "name": "@kev-ai/server",
   "version": "1.0.0",
-  "description": "Kev Decision API server",
+  "description": "NotJev : Kev Decision API server + playground",
   "license": "Apache-2.0",
   "type": "module",
   "bin": {
@@ -13,31 +13,45 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.js",
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": ["dist", "playground", "README.md"],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node ./scripts/sync-playground.mjs && tsup",
     "dev": "tsx watch src/cli.ts",
     "start": "node dist/cli.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "prepublishOnly": "pnpm build",
     "test": "node -e \"process.exit(0)\""
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
-    "@kev-ai/backends": "workspace:*",
-    "@kev-ai/core": "workspace:*",
-    "@kev-ai/schema": "workspace:*",
     "dotenv": "^16.4.7",
     "hono": "^4.6.14",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@kev-ai/backends": "workspace:*",
+    "@kev-ai/core": "workspace:*",
+    "@kev-ai/schema": "workspace:*",
     "@types/node": "^22.10.2",
+    "tsup": "^8.5.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arjun988/Kev.git",
+    "directory": "apps/server"
+  },
+  "homepage": "https://github.com/arjun988/Kev",
+  "bugs": {
+    "url": "https://github.com/arjun988/Kev/issues"
+  },
+  "keywords": ["kev", "notjev", "system-one", "decision-api"]
 }

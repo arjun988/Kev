@@ -48,6 +48,7 @@ Usage:
   kev demo
   kev eval dataset [--dataset path] [--mode mock|api]
   kev eval stability [--trials N]
+  kev-mcp            MCP stdio server (separate bin)
 
 Environment:
   KEV_BASE_URL       Server URL (default http://127.0.0.1:3000)
@@ -148,7 +149,7 @@ async function cmdEval(args: Args): Promise<void> {
   }
   if (sub === "dataset" || !sub) {
     const here = dirname(fileURLToPath(import.meta.url));
-    const fallback = resolve(here, "../../eval/fixtures/routing.json");
+    const fallback = resolve(here, "../fixtures/routing.json");
     const report = await runDataset({
       path: args.dataset ?? fallback,
       mode: args.mode === "api" ? "api" : "mock",

@@ -1,6 +1,7 @@
 {
   "name": "@kev-ai/core",
   "version": "1.0.0",
+  "private": true,
   "description": "Kev decision engine — readout, calibration, and question runners",
   "license": "Apache-2.0",
   "type": "module",

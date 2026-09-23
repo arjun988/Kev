@@ -1,6 +1,7 @@
 {
   "name": "@kev-ai/eval",
   "version": "1.0.0",
+  "private": true,
   "description": "Evaluation harness and stability suites for Kev",
   "license": "Apache-2.0",
   "type": "module",

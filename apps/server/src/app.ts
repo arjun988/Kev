@@ -8,7 +8,8 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { extname, join, normalize, resolve } from "node:path";
+import { dirname, extname, join, normalize, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createAuditLog } from "./audit.js";
 import type { ServerEnv } from "./config.js";
 import { createDecisionService, resolveModelName } from "./decision.js";
@@ -322,8 +323,13 @@ function handleUpstream(
 }
 
 function resolvePlaygroundDir(configured: string): string | null {
+  const here = dirname(fileURLToPath(import.meta.url));
   const candidates = [
     configured,
+    // Published package / local sync: apps/server/playground
+    resolve(here, "../playground"),
+    resolve(process.cwd(), "playground"),
+    // Monorepo checkouts
     resolve(process.cwd(), "../../apps/playground"),
     resolve(process.cwd(), "../playground"),
     resolve(process.cwd(), "apps/playground"),

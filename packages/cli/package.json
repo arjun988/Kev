@@ -1,28 +1,46 @@
 {
   "name": "@kev-ai/cli",
   "version": "1.0.0",
-  "description": "CLI for Kev — ask decisions and manage the local server",
+  "description": "CLI + MCP for NotJev : Kev System One decisions",
   "license": "Apache-2.0",
   "type": "module",
   "bin": {
-    "kev": "./dist/cli.js"
+    "kev": "./dist/cli.js",
+    "kev-mcp": "./dist/mcp.js"
   },
   "main": "./dist/cli.js",
-  "files": ["dist"],
+  "files": ["dist", "fixtures", "README.md"],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node ./scripts/sync-fixtures.mjs && tsup",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "dev": "tsx src/cli.ts",
+    "prepublishOnly": "pnpm build",
     "test": "node -e \"process.exit(0)\""
   },
   "dependencies": {
-    "@kev-ai/eval": "workspace:*",
-    "@kev-ai/sdk": "workspace:*"
+    "@kev-ai/sdk": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@kev-ai/eval": "workspace:*",
     "@types/node": "^22.10.2",
+    "tsup": "^8.5.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arjun988/Kev.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/arjun988/Kev",
+  "bugs": {
+    "url": "https://github.com/arjun988/Kev/issues"
+  },
+  "keywords": ["kev", "notjev", "cli", "mcp", "system-one"]
 }

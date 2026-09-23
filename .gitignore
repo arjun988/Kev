@@ -27,4 +27,7 @@ coverage/
 tmp/
 benchmarks/out/
 benchmarks/suites/openjev-heldout/raw/
+apps/server/playground/
+packages/cli/fixtures/
+*.tgz
 

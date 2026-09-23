@@ -218,6 +218,16 @@ A built-in UI for support routing, moderation, content scoring, vision triage, a
 
 ## Use it in code
 
+Published packages (npm org **`@kev-ai`** · PyPI **`kev`**):
+
+```bash
+npm install @kev-ai/sdk
+npm install -g @kev-ai/server @kev-ai/cli   # API + playground + CLI/MCP
+pip install kev
+```
+
+See [`PUBLISH.md`](PUBLISH.md) if you maintain the packages.
+
 ### TypeScript
 
 ```ts
@@ -246,6 +256,13 @@ const res = await client.systemOne({
 console.log(res.answers.topic.choice, res.answers.escalate.noul);
 ```
 
+LangChain / LlamaIndex (same package):
+
+```ts
+import { createLangChainKevTool } from "@kev-ai/sdk/langchain";
+import { createLlamaIndexKevTool } from "@kev-ai/sdk/llamaindex";
+```
+
 ### Python
 
 ```python
@@ -262,11 +279,31 @@ res = client.system_one(
 print(res.answers["topic"].choice, res.answers["escalate"].noul)
 ```
 
-### CLI
+### CLI & MCP
+
+```bash
+kev-server          # Decision API + playground
+kev health
+kev demo
+kev ask --state "Charged twice" --trace
+kev-mcp             # MCP stdio (Cursor / agents)
+```
+
+```json
+{
+  "mcpServers": {
+    "kev": {
+      "command": "kev-mcp",
+      "env": { "KEV_BASE_URL": "http://127.0.0.1:3000" }
+    }
+  }
+}
+```
+
+From a clone (without global install):
 
 ```bash
 pnpm --filter @kev-ai/cli exec kev demo
-pnpm --filter @kev-ai/cli exec kev ask --help
 pnpm --filter @kev-ai/cli exec kev eval stability --trials 20
 ```
 
@@ -325,16 +362,17 @@ Model recipes: [`models/cards/`](models/cards/README.md)
 
 ## Clients & tools
 
-| | |
+| | Install |
 | --- | --- |
-| HTTP API | `@kev-ai/server` |
-| TypeScript | `@kev-ai/sdk` |
-| CLI | `@kev-ai/cli` |
-| Python | `python/kev` |
-| MCP | `@kev-ai/mcp` |
-| Adapters | `@kev-ai/adapters` |
+| TypeScript SDK | `npm i @kev-ai/sdk` |
+| Server + playground | `npm i -g @kev-ai/server` → `kev-server` |
+| CLI + MCP | `npm i -g @kev-ai/cli` → `kev` / `kev-mcp` |
+| Python | `pip install kev` |
+| LangChain / LlamaIndex | `@kev-ai/sdk/langchain` · `@kev-ai/sdk/llamaindex` |
 | Recipes | [`awesome-kev/`](awesome-kev/README.md) |
 | Snippets | [`.vscode/kev.code-snippets`](.vscode/kev.code-snippets) |
+
+Publish notes: [`PUBLISH.md`](PUBLISH.md)
 
 ---
 
