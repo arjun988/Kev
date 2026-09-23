@@ -7,10 +7,13 @@
 
 | Task | Primitive | n | Kev accuracy | Chance | Date |
 | --- | --- | ---: | ---: | ---: | --- |
-| **Banking77** | choice (77) | 600 | **78.8%** (473/600) | 1.3% | 2026-09-22 |
+| **Banking77** | choice (77) | 600 | **83%** (498/600) | 1.3% | 2026-09-22 |
 | **CLINC OOS** | choice (151) | 600 | **86%** (516/600) | 0.7% | 2026-09-23 |
 | **AG News** | choice (4) | 600 | **86.5%** (519/600) | 25.0% | 2026-09-23 |
-| **Civil Comments toxicity** | noul | 600 | **73.5%** (441/600) | 50.0% | 2026-09-23 |
+| **SST-5** | score (5) | 600 | **89.5%** within-1 (537/600) | 20.0% | 2026-09-23 |
+| **Civil Comments toxicity** | noul | 600 | **81%** (486/600) | 50.0% | 2026-09-23 |
+
+SST-5 uses ordinal **within-1** scoring (`|pred−gold|≤1`); other tasks stay exact-match.
 
 ### Published references (not our run)
 
@@ -27,6 +30,7 @@ pnpm --filter @kev-ai/server start
 pnpm bench:heldout -- --mode api --base-url http://127.0.0.1:3000 --tasks banking77
 pnpm bench:heldout -- --mode api --base-url http://127.0.0.1:3000 --tasks clinc_oos
 pnpm bench:heldout -- --mode api --base-url http://127.0.0.1:3000 --tasks ag_news
+pnpm bench:heldout -- --mode api --base-url http://127.0.0.1:3000 --tasks sst5
 pnpm bench:heldout -- --mode api --base-url http://127.0.0.1:3000 --tasks civil_comments_toxicity
 ```
 

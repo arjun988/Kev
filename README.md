@@ -229,15 +229,16 @@ We use the **same public held-out suite** OpenJev ships for generalization check
 
 | Task | Kev + qwen3.5:9b (Ollama GPU) | Chance | Published reference |
 | --- | ---: | ---: | --- |
-| **Banking77** · n=600 | **78.8%** (473/600) | 1.3% | Jev ~**82%** held-out · JevBench **80.3%** |
+| **Banking77** · n=600 | **83%** (498/600) | 1.3% | Jev ~**82%** held-out · JevBench **80.3%** |
 | **CLINC OOS** · n=600 | **86%** (516/600) | 0.7% | — |
 | **AG News** · n=600 | **86.5%** (519/600) | 25.0% | — |
-| **Civil Comments toxicity** · n=600 | **73.5%** (441/600) | 50.0% | — |
+| **SST-5** · n=600 | **89.5%** within-1 (537/600) | 20.0% | ordinal ±1 |
+| **Civil Comments toxicity** · n=600 | **81%** (486/600) | 50.0% | — |
 
 OpenJev private 10k (cite only): Jev **85.4%** · OpenJev **84.0%**.
 
 ```bash
-pnpm bench:heldout -- --mode api --base-url http://127.0.0.1:3000 --tasks banking77,clinc_oos,ag_news,civil_comments_toxicity
+pnpm bench:heldout -- --mode api --base-url http://127.0.0.1:3000 --tasks banking77,clinc_oos,ag_news,sst5,civil_comments_toxicity
 ```
 
 - Full table + citations: [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md)

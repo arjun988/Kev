@@ -44,6 +44,11 @@ type TaskReport = {
   n: number;
   correct: number;
   accuracy: number;
+  /** Exact-match for score; same as accuracy for choice/noul */
+  accuracy_exact?: number;
+  /** Ordinal within-1 (|pred-gold|≤1). Only set for score tasks. */
+  accuracy_within1?: number;
+  correct_within1?: number;
   chance: number;
   lift_over_chance: number;
   failures_sample: Array<{ state: string; expected: unknown; got: unknown }>;
@@ -85,44 +90,71 @@ function toQuestions(task: TaskFile): Record<string, Question> {
   return out;
 }
 
+function argmaxScoreLevel(
+  probabilities: Record<string, number>,
+): number {
+  let best = "0";
+  let bestP = -1;
+  for (const [k, p] of Object.entries(probabilities)) {
+    if (p > bestP) {
+      bestP = p;
+      best = k;
+    }
+  }
+  return Number(best);
+}
+
 function scoreRow(
   questions: Record<string, Question>,
   expected: Record<string, string | number | boolean>,
   response: SystemOneResponse,
-): { ok: boolean; detail?: { expected: unknown; got: unknown } } {
+): {
+  exact: boolean;
+  within1: boolean;
+  detail?: { expected: unknown; got: unknown };
+} {
+  let exact = true;
+  let within1 = true;
+  let detail: { expected: unknown; got: unknown } | undefined;
+
   for (const [qName, gold] of Object.entries(expected)) {
     const q = questions[qName];
     const ans = response.answers[qName];
-    if (!q || !ans) return { ok: false, detail: { expected: gold, got: null } };
+    if (!q || !ans) {
+      return { exact: false, within1: false, detail: { expected: gold, got: null } };
+    }
 
     if (q.type === "choice" && ans.type === "choice") {
-      if (ans.choice !== String(gold)) {
-        return { ok: false, detail: { expected: gold, got: ans.choice } };
+      const ok = ans.choice === String(gold);
+      if (!ok) {
+        exact = false;
+        within1 = false;
+        detail ??= { expected: gold, got: ans.choice };
       }
     } else if (q.type === "score" && ans.type === "score") {
-      // Match OpenJev-style hard label: nearest level / argmax of distribution
-      let best = "0";
-      let bestP = -1;
-      for (const [k, p] of Object.entries(ans.probabilities)) {
-        if (p > bestP) {
-          bestP = p;
-          best = k;
-        }
+      const pred = argmaxScoreLevel(ans.probabilities);
+      const g = Number(gold);
+      if (pred !== g) {
+        exact = false;
+        detail ??= { expected: gold, got: pred };
       }
-      if (Number(best) !== Number(gold)) {
-        return { ok: false, detail: { expected: gold, got: Number(best) } };
+      if (Math.abs(pred - g) > 1) {
+        within1 = false;
       }
     } else if (q.type === "noul" && ans.type === "noul") {
       const wantToxic = Boolean(gold);
       const predToxic = ans.noul >= 0.5;
-      if (wantToxic !== predToxic) {
-        return { ok: false, detail: { expected: gold, got: ans.noul } };
+      const ok = wantToxic === predToxic;
+      if (!ok) {
+        exact = false;
+        within1 = false;
+        detail ??= { expected: gold, got: ans.noul };
       }
     } else {
-      return { ok: false, detail: { expected: gold, got: ans } };
+      return { exact: false, within1: false, detail: { expected: gold, got: ans } };
     }
   }
-  return { ok: true };
+  return { exact, within1, detail };
 }
 
 function chanceRate(questions: Record<string, Question>): number {
@@ -180,13 +212,15 @@ async function runTask(taskName: string, args: Args): Promise<TaskReport> {
   if (args.limit && args.limit > 0) rows = rows.slice(0, args.limit);
 
   let correct = 0;
+  let correctWithin1 = 0;
   const failures_sample: TaskReport["failures_sample"] = [];
 
   for (const row of rows) {
     const response = await evaluateOne(args, row.state, questions);
     const scored = scoreRow(questions, row.answers, response);
-    if (scored.ok) correct += 1;
-    else if (failures_sample.length < 5 && scored.detail) {
+    if (scored.exact) correct += 1;
+    if (scored.within1) correctWithin1 += 1;
+    if (!scored.exact && failures_sample.length < 5 && scored.detail) {
       failures_sample.push({
         state: row.state.slice(0, 120),
         expected: scored.detail.expected,
@@ -199,13 +233,23 @@ async function runTask(taskName: string, args: Args): Promise<TaskReport> {
   const accuracy = n ? correct / n : 0;
   const chance = chanceRate(questions);
   const q0 = Object.values(questions)[0]!;
+  const isScore = q0.type === "score";
+  const within1Acc = n ? correctWithin1 / n : 0;
 
   return {
     task: taskName,
     primitive: q0.type,
     n,
+    // Primary accuracy stays exact-match (comparable to choice tasks / OpenJev-style).
     correct,
     accuracy,
+    ...(isScore
+      ? {
+          accuracy_exact: accuracy,
+          accuracy_within1: within1Acc,
+          correct_within1: correctWithin1,
+        }
+      : {}),
     chance,
     lift_over_chance: accuracy - chance,
     failures_sample,
@@ -283,12 +327,16 @@ async function main(): Promise<void> {
     `Suite: [s1lv3rj1nx/openjev-heldout](https://huggingface.co/datasets/s1lv3rj1nx/openjev-heldout)`,
     `Mode: **${args.mode}** · date: ${payload.date}`,
     ``,
-    `| Task | Primitive | n | Kev accuracy | Chance | Lift |`,
+    `| Task | Primitive | n | Exact | Within-1 | Chance |`,
     `| --- | --- | ---: | ---: | ---: | ---: |`,
-    ...reports.map(
-      (r) =>
-        `| ${r.task} | ${r.primitive} | ${r.n} | ${(r.accuracy * 100).toFixed(1)}% | ${(r.chance * 100).toFixed(1)}% | ${(r.lift_over_chance * 100).toFixed(1)} pp |`,
-    ),
+    ...reports.map((r) => {
+      const exact = `${(r.accuracy * 100).toFixed(1)}%`;
+      const w1 =
+        r.accuracy_within1 != null
+          ? `${(r.accuracy_within1 * 100).toFixed(1)}%`
+          : "—";
+      return `| ${r.task} | ${r.primitive} | ${r.n} | ${exact} | ${w1} | ${(r.chance * 100).toFixed(1)}% |`;
+    }),
     ``,
     `**Micro-average:** ${(payload.micro_accuracy * 100).toFixed(1)}% (${totalCorrect}/${totalN})`,
     ``,

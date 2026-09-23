@@ -29,10 +29,11 @@ OpenJev’s famous **10,000-question / 34-source** table is **not fully public**
 
 | Backend | Task | Accuracy | Date |
 | --- | --- | ---: | --- |
-| **qwen3.5:9b · Ollama · 100% GPU** | Banking77 | **78.8%** (473/600) | 2026-09-22 |
+| **qwen3.5:9b · Ollama · 100% GPU** | Banking77 | **83%** (498/600) | 2026-09-22 |
 | **qwen3.5:9b · Ollama · 100% GPU** | CLINC OOS | **86%** (516/600) | 2026-09-23 |
 | **qwen3.5:9b · Ollama · 100% GPU** | AG News | **86.5%** (519/600) | 2026-09-23 |
-| **qwen3.5:9b · Ollama · 100% GPU** | Civil Comments toxicity | **73.5%** (441/600) | 2026-09-23 |
+| **qwen3.5:9b · Ollama · 100% GPU** | SST-5 | **89.5%** within-1 (537/600) | 2026-09-23 |
+| **qwen3.5:9b · Ollama · 100% GPU** | Civil Comments toxicity | **81%** (486/600) | 2026-09-23 |
 
 Full breakdown: [`../../RESULTS.md`](../../RESULTS.md) · artifact: `benchmarks/out/openjev-heldout-latest.json`
 
